@@ -15,11 +15,16 @@ public class FtpSession {
     protected boolean userAnon = false;
     protected int loginFails = 0;
 
+    protected boolean isAscii = false;
 
     protected String[] userCmdsAllowed = {}; //用户白名单
     protected String[] userCmdsDenied = {}; //用户黑名单
 
     protected String userCwd = "/";
-    protected String userHomeDir = "C:/";
+    protected String userHomeDir = "C:\\";
     protected String userCurrentDir = userHomeDir;
+
+    protected String userRemoteAddr = "";
+    protected String userSocketAddr = "";
+    protected int userSocketPort = 0;
 }
