@@ -4,6 +4,7 @@ import org.foxteam.nosiyfox.fdf.FtpCodes;
 import org.foxteam.nosiyfox.fdf.FtpMain;
 import org.foxteam.nosiyfox.fdf.FtpUtil;
 import org.foxteam.nosiyfox.fdf.Tunables;
+import sun.net.NetworkClient;
 
 import java.io.*;
 import java.net.Socket;
@@ -59,7 +60,7 @@ public class HostServant extends Thread {
                 if (i != -1) {
                     mSession.ftpCmd = line.substring(0, i).trim().toUpperCase();
                     mSession.ftpArg = line.substring(i).trim();
-                }else{
+                } else {
                     mSession.ftpCmd = line;
                 }
                 return true;
@@ -82,31 +83,31 @@ public class HostServant extends Thread {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_GREET, ' ', "(fdFTPd " + FtpMain.FDF_VER + " )");
     }
 
-    private boolean checkLoginFail(){
+    private boolean checkLoginFail() {
         mSession.loginFails++;
         return mSession.loginFails <= mTunables.hostMaxLoginFails;
     }
 
-    private void handleCwd(){
+    private void handleCwd() {
         //获取真实路径
         String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
 
-        if(rp.isEmpty()){
+        if (rp.isEmpty()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             return;
         }
 
         File f = new File(rp);
-        if(!f.exists() || !f.isDirectory()){
+        if (!f.exists() || !f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             return;
-        }else if(!f.canRead()){
+        } else if (!f.canRead()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
 
         //验证是否为home的子目录
-        if(!rp.startsWith(mSession.userHomeDir)){
+        if (!rp.startsWith(mSession.userHomeDir)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
@@ -115,6 +116,39 @@ public class HostServant extends Thread {
         mSession.userCurrentDir = rp;
 
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
+    }
+
+    private void handlePort() {
+        mSession.userSocketAddr = "";
+        mSession.userSocketPort = 0;
+        String[] values = mSession.ftpArg.split(",");
+        if (values.length != 6) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
+            return;
+        }
+        int sockPort;
+        try {
+            sockPort = Integer.valueOf(values[4]) << 8 | Integer.valueOf(values[5]);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
+            return;
+        }
+        String sockAddr = String.format("%s.%s.%s.%s", values);
+        System.out.println(sockAddr + ":" + sockPort);
+        /* SECURITY:
+        * 1) Reject requests not connecting to the control socket IP
+        * 2) Reject connects to privileged ports
+        */
+        if(!sockAddr.equals(mSession.userRemoteAddr) || sockPort < FtpMain.IPPORT_RESERVED){
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
+            return;
+        }
+
+        mSession.userSocketAddr = sockAddr;
+        mSession.userSocketPort = sockPort;
+
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PORTOK, ' ', "PORT command successful. Consider using PASV.");
     }
 
     private void handleFeatures() {
@@ -133,8 +167,8 @@ public class HostServant extends Thread {
         }
     }
 
-    private boolean handlePass(){
-        if(mSession.userAnon){
+    private boolean handlePass() {
+        if (mSession.userAnon) {
             postLogin();
             return true;
         }
@@ -154,15 +188,15 @@ public class HostServant extends Thread {
                 mSession.userAnon = "FTP".equals(mSession.ftpArg) || "ANONYMOUS".equals(mSession.ftpArg);
                 if (mSession.userAnon && mTunables.hostNoAnonPassword) {
                     mSession.ftpArg = "<no password>";
-                    if(handlePass()){
+                    if (handlePass()) {
                         break;
-                    }else{
+                    } else {
                         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Login incorrect.");
-                        if(!checkLoginFail()){
+                        if (!checkLoginFail()) {
                             break;
                         }
                     }
-                }else{
+                } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_GIVEPWORD, ' ', "Please specify the password.");
                 }
             } else if ("PASS".equals(mSession.ftpCmd)) {
@@ -170,11 +204,11 @@ public class HostServant extends Thread {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NEEDUSER, ' ', "Login with USER first.");
                     continue;
                 }
-                if(handlePass()){
+                if (handlePass()) {
                     break;
-                }else{
+                } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Login incorrect.");
-                    if(!checkLoginFail()){
+                    if (!checkLoginFail()) {
                         break;
                     }
                 }
@@ -213,6 +247,8 @@ public class HostServant extends Thread {
             greeting();
 
             mSession = new FtpSession();
+            String oAddr = mIncoming.getRemoteSocketAddress().toString();
+            mSession.userRemoteAddr = oAddr.substring(1, oAddr.indexOf(':'));
 
             parseUsernamePassword();
 
@@ -223,86 +259,98 @@ public class HostServant extends Thread {
         System.out.println("Session exit!");
     }
 
-    private void postLogin(){
+    private void postLogin() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINOK, ' ', "Login successful.");
         while (readCmdArg()) {
-             //检查命令是否在白名单或黑名单中
+            //检查命令是否在白名单或黑名单中
             boolean isCmdAllowed = false;
             //优先检查用户黑白名单
-            if(mSession.userCmdsAllowed.length > 0){
-                for(String c : mSession.userCmdsAllowed){
-                    if(c.equals(mSession.ftpCmd)){
+            if (mSession.userCmdsAllowed.length > 0) {
+                for (String c : mSession.userCmdsAllowed) {
+                    if (c.equals(mSession.ftpCmd)) {
                         isCmdAllowed = true;
                         break;
                     }
                 }
-            }else if(mTunables.hostCmdsAllowed.length > 0){
-                for(String c : mTunables.hostCmdsAllowed){
-                    if(c.equals(mSession.ftpCmd)){
+            } else if (mTunables.hostCmdsAllowed.length > 0) {
+                for (String c : mTunables.hostCmdsAllowed) {
+                    if (c.equals(mSession.ftpCmd)) {
                         isCmdAllowed = true;
                         break;
                     }
                 }
-            }else{
+            } else {
                 isCmdAllowed = true;
             }
-            if(mSession.userCmdsDenied.length > 0){
-                for(String c : mSession.userCmdsDenied){
-                    if(c.equals(mSession.ftpCmd)){
+            if (mSession.userCmdsDenied.length > 0) {
+                for (String c : mSession.userCmdsDenied) {
+                    if (c.equals(mSession.ftpCmd)) {
                         isCmdAllowed = false;
                         break;
                     }
                 }
-            }else if(mTunables.hostCmdsDenied.length > 0){
-                for(String c : mTunables.hostCmdsDenied){
-                    if(c.equals(mSession.ftpCmd)){
+            } else if (mTunables.hostCmdsDenied.length > 0) {
+                for (String c : mTunables.hostCmdsDenied) {
+                    if (c.equals(mSession.ftpCmd)) {
                         isCmdAllowed = false;
                         break;
                     }
                 }
             }
 
-            if(!isCmdAllowed){
+            if (!isCmdAllowed) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
-            }else if("QUIT".equals(mSession.ftpCmd)){
+            } else if ("QUIT".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_GOODBYE, ' ', "Goodbye.");
                 break;
-            }else if("PWD".equals(mSession.ftpCmd) || "XPWD".equals(mSession.ftpCmd)){
+            } else if ("PWD".equals(mSession.ftpCmd) || "XPWD".equals(mSession.ftpCmd)) {
                 //路径中的双引号加倍
                 String cwd = mSession.userCwd.replace("\"", "\"\"");
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PWDOK, ' ', "\"" + cwd + "\"");
-            }else if("CWD".equals(mSession.ftpCmd) || "XCWD".equals(mSession.ftpCmd)){
+            } else if ("CWD".equals(mSession.ftpCmd) || "XCWD".equals(mSession.ftpCmd)) {
                 handleCwd();
-            }else if("CDUP".equals(mSession.ftpCmd) || "XCUP".equals(mSession.ftpCmd)){
+            } else if ("CDUP".equals(mSession.ftpCmd) || "XCUP".equals(mSession.ftpCmd)) {
                 mSession.ftpArg = "../";
                 handleCwd();
-            }
+            } else if ("PASV".equals(mSession.ftpCmd) || "P@SW".equals(mSession.ftpCmd)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "PASV not support yet.");
+            } else if ("RETR".equals(mSession.ftpCmd)) {
 
-            else if("NOOP".equals(mSession.ftpCmd)){
+            } else if ("NOOP".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
-            }else if("SYST".equals(mSession.ftpCmd)){
+            } else if ("SYST".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SYSTOK, ' ', "UNIX Type: L8");
-            }
+            } else if ("LIST".equals(mSession.ftpCmd)) {
 
-            else if("FEAT".equals(mSession.ftpCmd)){
+            } else if ("TYPE".equals(mSession.ftpCmd)) {
+                if ("I".equals(mSession.ftpArg) || "L8".equals(mSession.ftpArg) || "L 8".equals(mSession.ftpArg)) {
+                    mSession.isAscii = false;
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TYPEOK, ' ', "Switching to Binary mode.");
+                } else if ("A".equals(mSession.ftpArg) || "A N".equals(mSession.ftpArg)) {
+                    mSession.isAscii = true;
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TYPEOK, ' ', "Switching to ASCII mode.");
+                } else {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unrecognised TYPE command.");
+                }
+            } else if ("PORT".equals(mSession.ftpCmd)) {
+                handlePort();
+            } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
             } else if ("OPTS".equals(mSession.ftpCmd)) {
                 handleOpts();
-            }else if("USER".equals(mSession.ftpCmd)){
-                if(mSession.userAnon){
+            } else if ("USER".equals(mSession.ftpCmd)) {
+                if (mSession.userAnon) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Can't change from guest user.");
-                }else if(mSession.user.equals(mSession.ftpArg)){
+                } else if (mSession.user.equals(mSession.ftpArg)) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_GIVEPWORD, ' ', "Any password will do.");
-                }else{
+                } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Can't change to another user.");
                 }
-            }else if("PASS".equals(mSession.ftpCmd)){
+            } else if ("PASS".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINOK, ' ', "Already logged in.");
-            }
+            } else if (mSession.ftpCmd.isEmpty() && mSession.ftpArg.isEmpty()) {
 
-            else if(mSession.ftpCmd.isEmpty() && mSession.ftpArg.isEmpty()){
-
-            }else{
+            } else {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
         }

@@ -13,6 +13,7 @@ import java.io.File;
  */
 public class FtpMain {
     public static final String FDF_VER = "0.1";
+    public static final int IPPORT_RESERVED = 1024;
 
     public static void main(String args[]){
 
