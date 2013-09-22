@@ -59,8 +59,10 @@ public class HostServant extends Thread {
                 if (i != -1) {
                     mSession.ftpCmd = line.substring(0, i).trim().toUpperCase();
                     mSession.ftpArg = line.substring(i).trim();
-                    return true;
+                }else{
+                    mSession.ftpCmd = line;
                 }
+                return true;
             }
         } catch (IOException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
@@ -103,7 +105,7 @@ public class HostServant extends Thread {
 
     private boolean handlePass(){
         if(mSession.userAnon){
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINOK, ' ', "Login successful.");
+            postLogin();
             return true;
         }
 
@@ -189,5 +191,13 @@ public class HostServant extends Thread {
         doClean();
         mNumClients--;
         System.out.println("Session exit!");
+    }
+
+    private void postLogin(){
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINOK, ' ', "Login successful.");
+        while (readCmdArg()) {
+
+        }
+        System.out.println("Oops!");
     }
 }
