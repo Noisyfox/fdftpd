@@ -17,6 +17,9 @@ public class Tunables {
 
     public boolean hostNoAnonPassword = true;
 
+    public String[] hostCmdsAllowed = {}; //全局白名单
+    public String[] hostCmdsDenied = {}; //全局黑名单
+
     public void loadFromFile(String filePath){
 
     }

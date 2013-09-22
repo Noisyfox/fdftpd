@@ -1,5 +1,7 @@
 package org.foxteam.nosiyfox.fdf;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
@@ -23,5 +25,23 @@ public class FtpUtil {
     public static void ftpWriteStringRaw(PrintWriter out, String str) {
         out.println(str);
         out.flush();
+    }
+
+    public static String ftpGetRealPath(String home, String cur, String dir){
+
+        if(dir.startsWith("~")){
+            dir = dir.substring(1);
+            return ftpGetRealPath(home, "", dir);
+        }
+
+        File f = new File(home);
+        f = new File(f, cur);
+        f = new File(f, dir);
+        try {
+            return f.getCanonicalPath();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        return "";
     }
 }

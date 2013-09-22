@@ -2,6 +2,8 @@ package org.foxteam.nosiyfox.fdf;
 
 import org.foxteam.nosiyfox.fdf.Host.Host;
 
+import java.io.File;
+
 /**
  * Created with IntelliJ IDEA.
  * User: Noisyfox

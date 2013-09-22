@@ -14,4 +14,12 @@ public class FtpSession {
     protected String user = "";
     protected boolean userAnon = false;
     protected int loginFails = 0;
+
+
+    protected String[] userCmdsAllowed = {}; //用户白名单
+    protected String[] userCmdsDenied = {}; //用户黑名单
+
+    protected String userCwd = "/";
+    protected String userHomeDir = "C:/";
+    protected String userCurrentDir = userHomeDir;
 }
