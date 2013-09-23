@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
@@ -24,11 +25,13 @@ public class FtpUtil {
         String s = str.replace('\n', '\0');
         sb.append(s.replace("\377", "\377\377"));
         out.println(sb.toString());
+        System.out.println("Result:" + sb.toString());
         out.flush();
     }
 
     public static void ftpWriteStringRaw(PrintWriter out, String str) {
         out.println(str);
+        System.out.println("Result:" + str);
         out.flush();
     }
 
@@ -60,18 +63,18 @@ public class FtpUtil {
         calendar.add(Calendar.MONTH, -6);
         long time6MonthBefore = calendar.getTimeInMillis();
         if (modifyTime < time6MonthBefore) {
-            timeString = new SimpleDateFormat("MM dd yyyy")
+            timeString = new SimpleDateFormat("MMM dd yyyy", Locale.ENGLISH)
                     .format(new Date(modifyTime));
         } else {
-            timeString = new SimpleDateFormat("MM dd hh:mm")
+            timeString = new SimpleDateFormat("MMM dd hh:mm", Locale.ENGLISH)
                     .format(new Date(modifyTime));
         }
 
         if (file.isDirectory()) {
-            return "drwxr-xr-x 1 ftp      ftp            0 "
+            return "drwxr-xr-x 1 0      0            0 "
                     + timeString + " " + file.getName();
         } else {
-            return "-rw-r-r--- 1 ftp      ftp            "
+            return "-rw-r-r--- 1 0      0            "
                     + file.length() + " " + timeString + " "
                     + file.getName();
         }
