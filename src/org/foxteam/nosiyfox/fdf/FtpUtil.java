@@ -53,6 +53,9 @@ public class FtpUtil {
         return "";
     }
 
+    private static SimpleDateFormat dateFormatYear = new SimpleDateFormat("MMM dd yyyy", Locale.ENGLISH);
+    private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("MMM dd hh:mm", Locale.ENGLISH);
+
     public static String ftpFileNameFormat(File file) {
         long modifyTime = file.lastModified();
         //判断是否是6个月以内,见http://cr.yp.to/ftp/list/binls.html
@@ -63,11 +66,9 @@ public class FtpUtil {
         calendar.add(Calendar.MONTH, -6);
         long time6MonthBefore = calendar.getTimeInMillis();
         if (modifyTime < time6MonthBefore) {
-            timeString = new SimpleDateFormat("MMM dd yyyy", Locale.ENGLISH)
-                    .format(new Date(modifyTime));
+            timeString = dateFormatYear.format(new Date(modifyTime));
         } else {
-            timeString = new SimpleDateFormat("MMM dd hh:mm", Locale.ENGLISH)
-                    .format(new Date(modifyTime));
+            timeString = dateFormatTime.format(new Date(modifyTime));
         }
 
         if (file.isDirectory()) {

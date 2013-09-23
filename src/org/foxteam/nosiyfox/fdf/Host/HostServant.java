@@ -7,6 +7,8 @@ import org.foxteam.nosiyfox.fdf.Tunables;
 
 import java.io.*;
 import java.net.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -500,9 +502,32 @@ public class HostServant extends Thread {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
     }
 
+    private static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
+
+    private void handleMdtm(){
+        //获取真实路径
+        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+
+        if (rp.isEmpty()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file modification time.");
+            return;
+        }
+
+        File f = new File(rp);
+        if (!f.exists() || f.isDirectory()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file modification time..");
+            return;
+        } else if (!rp.startsWith(mSession.userHomeDir)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', dateFormatMdtm.format(new Date(f.lastModified())));
+    }
+
     private void handleFeatures() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, '-', "Features:");
-        //FtpUtil.ftpWriteStringRaw(mOut, " MDTM");
+        FtpUtil.ftpWriteStringRaw(mOut, " MDTM");
         FtpUtil.ftpWriteStringRaw(mOut, " PASV");
         FtpUtil.ftpWriteStringRaw(mOut, " SIZE");
         FtpUtil.ftpWriteStringRaw(mOut, " UTF8");
@@ -695,7 +720,11 @@ public class HostServant extends Thread {
 
             else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOR_NOCONN, ' ', "No transfer to ABOR.");
-            } else if ("FEAT".equals(mSession.ftpCmd)) {
+            } else if("MDTM".equals(mSession.ftpCmd)){
+                handleMdtm();
+            }
+
+            else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
             } else if ("OPTS".equals(mSession.ftpCmd)) {
                 handleOpts();

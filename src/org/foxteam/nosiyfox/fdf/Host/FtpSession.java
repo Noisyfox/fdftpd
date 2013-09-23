@@ -3,7 +3,6 @@ package org.foxteam.nosiyfox.fdf.Host;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.PrintWriter;
-import java.io.Reader;
 import java.net.ServerSocket;
 import java.net.Socket;
 
