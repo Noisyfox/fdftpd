@@ -71,12 +71,13 @@ public class FtpUtil {
         }
 
         if (file.isDirectory()) {
-            return "drwxr-xr-x 1 0      0            0 "
-                    + timeString + " " + file.getName();
+            return String.format("d%s%s%sr-xr-x 1 0      0   0 %s %s",
+                    file.canRead() ? "r" : "-", file.canWrite() ? "w" : "-", file.canExecute() ? "x" : "-",
+                    timeString, file.getName());
         } else {
-            return "-rw-r-r--- 1 0      0            "
-                    + file.length() + " " + timeString + " "
-                    + file.getName();
+            return String.format("-%s%s%sr-xr-x 1 0      0   %d %s %s",
+                    file.canRead() ? "r" : "-", file.canWrite() ? "w" : "-", file.canExecute() ? "x" : "-",
+                    file.length() , timeString, file.getName());
         }
     }
 
