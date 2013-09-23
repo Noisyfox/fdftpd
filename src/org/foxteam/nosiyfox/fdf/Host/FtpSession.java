@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
@@ -34,6 +35,8 @@ public class FtpSession {
     protected String userRemoteAddr = "";
     protected String userPortSocketAddr = "";
     protected int userPortSocketPort = 0;
+
+    protected ServerSocket userPasvSocketServer = null;
 
     //数据传输流
     protected boolean userDataTransferAborReceived = false;

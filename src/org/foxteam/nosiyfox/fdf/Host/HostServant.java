@@ -6,7 +6,8 @@ import org.foxteam.nosiyfox.fdf.FtpUtil;
 import org.foxteam.nosiyfox.fdf.Tunables;
 
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -18,6 +19,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class HostServant extends Thread {
     private static volatile AtomicInteger mNumClients = new AtomicInteger(0);
+
+    private final static Random generator = new Random();//随机数
 
     protected final Tunables mTunables;
     protected final Socket mIncoming;
@@ -83,7 +86,61 @@ public class HostServant extends Thread {
     }
 
     private boolean ioStartConnectionPasv() {
-        return false;
+        Socket tempSocket = null;
+        BufferedReader tempReader = null;
+        PrintWriter tempWriterAscii = null;
+        BufferedWriter tempWriterBinary = null;
+        try {
+            tempSocket = mSession.userPasvSocketServer.accept();
+            mSession.userPasvSocketServer.close();
+            mSession.userPasvSocketServer = null;
+            //检查是否是来自当前客户端的连接
+            String oAddr = tempSocket.getRemoteSocketAddress().toString();
+            String clientAddr = oAddr.substring(1, oAddr.indexOf(':'));
+            if (!mSession.userRemoteAddr.equals(clientAddr)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Security: Bad IP connecting.");
+                if (tempSocket != null) try {
+                    tempSocket.close();
+                } catch (IOException e1) {
+                    e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+                return false;
+            }
+            String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
+            tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream(), charSet));
+            OutputStream os = tempSocket.getOutputStream();
+            tempWriterBinary = new BufferedWriter(new OutputStreamWriter(os, charSet));
+            tempWriterAscii = new PrintWriter(tempWriterBinary, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+            //clean
+            if (tempReader != null) try {
+                tempReader.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            if (tempWriterAscii != null) tempWriterAscii.close();
+            if (tempWriterBinary != null) try {
+                tempWriterBinary.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            if (tempSocket != null) try {
+                tempSocket.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Failed to establish connection.");
+
+            return false;
+        }
+
+        mSession.userDataTransferSocket = tempSocket;
+        mSession.userDataTransferReader = tempReader;
+        mSession.userDataTransferWriterAscii = tempWriterAscii;
+        mSession.userDataTransferWriterBinary = tempWriterBinary;
+
+        return true;
     }
 
     private boolean ioStartConnectionPort() {
@@ -147,6 +204,10 @@ public class HostServant extends Thread {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
 
+        cleanPasv();
+        cleanPort();
+        ioCloseConnection();
+
     }
 
     private boolean readCmdArg() {
@@ -154,7 +215,7 @@ public class HostServant extends Thread {
         mSession.ftpArg = "";
         try {
             String line = mIn.readLine();
-            System.out.println("User:" + mSession.user + "Command:" + line);
+            System.out.println("User:" + mSession.user + ";Command:" + line);
             if (line != null) {
                 int i = line.indexOf(' ');
                 if (i != -1) {
@@ -219,6 +280,14 @@ public class HostServant extends Thread {
     }
 
     private void cleanPasv() {
+        if (mSession.userPasvSocketServer != null) {
+            try {
+                mSession.userPasvSocketServer.close();
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
+        mSession.userPasvSocketServer = null;
     }
 
     private void cleanPort() {
@@ -227,7 +296,7 @@ public class HostServant extends Thread {
     }
 
     private boolean isPasvActivate() {
-        return false;
+        return mSession.userPasvSocketServer != null && !mSession.userPasvSocketServer.isClosed();
     }
 
     private boolean isPortActivate() {
@@ -235,7 +304,7 @@ public class HostServant extends Thread {
     }
 
     private boolean checkDataTransferOk() {
-        if (!isPortActivate() && !isPortActivate()) {
+        if (!isPasvActivate() && !isPortActivate()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Use PORT or PASV first.");
             return false;
         }
@@ -247,6 +316,37 @@ public class HostServant extends Thread {
             mSession.userDataTransferAborReceived = false;
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOROK, ' ', "ABOR successful.");
         }
+    }
+
+    private void handlePasv() {
+        cleanPasv();
+        cleanPort();
+
+        //尝试开启端口监听
+        int bindRetry = 10;
+        int minPort = 1024;
+        int maxPort = 65535;
+        int selectedPort;
+        ServerSocket ss = null;
+        while (true) {
+            bindRetry--;
+            if (bindRetry <= 0) {
+                return;
+            }
+            selectedPort = minPort + generator.nextInt(maxPort - minPort) + 1;//随机端口
+            //尝试打开端口
+            try {
+                ss = new ServerSocket(selectedPort);
+                break;
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
+        String address = mIncoming.getLocalAddress().toString().replace("/", "").replace(".", ",");
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PASVOK, ' ', "Entering Passive Mode (" + address + ","
+                + (selectedPort >> 8) + "," + (selectedPort & 0xFF) + ").");
+        //储存pasv监听器
+        mSession.userPasvSocketServer = ss;
     }
 
     private void handlePort() {
@@ -304,7 +404,6 @@ public class HostServant extends Thread {
             filterStr = mSession.ftpArg;
         }
 
-        boolean isDir = true;
         boolean useControl = false;
 
         /*
@@ -382,6 +481,8 @@ public class HostServant extends Thread {
 
     private void handleFeatures() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, '-', "Features:");
+        //FtpUtil.ftpWriteStringRaw(mOut, " MDTM");
+        FtpUtil.ftpWriteStringRaw(mOut, " PASV");
         FtpUtil.ftpWriteStringRaw(mOut, " SIZE");
         FtpUtil.ftpWriteStringRaw(mOut, " UTF8");
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, ' ', "End");
@@ -543,7 +644,7 @@ public class HostServant extends Thread {
                 mSession.ftpArg = "../";
                 handleCwd();
             } else if ("PASV".equals(mSession.ftpCmd) || "P@SW".equals(mSession.ftpCmd)) {
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "PASV not support yet.");
+                handlePasv();
             } else if ("RETR".equals(mSession.ftpCmd)) {
 
             } else if ("NOOP".equals(mSession.ftpCmd)) {
