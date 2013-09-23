@@ -20,6 +20,9 @@ public class Tunables {
     public String[] hostCmdsAllowed = {}; //全局白名单
     public String[] hostCmdsDenied = {}; //全局黑名单
 
+    public String hostRemoteCharset = "GBK";//控制流使用的默认编码
+    public String hostDefaultTransferCharset = "GBK";//传输流默认使用GBK编码
+
     public void loadFromFile(String filePath){
 
     }

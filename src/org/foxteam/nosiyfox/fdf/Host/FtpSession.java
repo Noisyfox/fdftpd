@@ -1,5 +1,11 @@
 package org.foxteam.nosiyfox.fdf.Host;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.PrintWriter;
+import java.io.Reader;
+import java.net.Socket;
+
 /**
  * Created with IntelliJ IDEA.
  * User: Noisyfox
@@ -16,6 +22,7 @@ public class FtpSession {
     protected int loginFails = 0;
 
     protected boolean isAscii = false;
+    protected boolean isUTF8Required = false;
 
     protected String[] userCmdsAllowed = {}; //用户白名单
     protected String[] userCmdsDenied = {}; //用户黑名单
@@ -25,6 +32,13 @@ public class FtpSession {
     protected String userCurrentDir = userHomeDir;
 
     protected String userRemoteAddr = "";
-    protected String userSocketAddr = "";
-    protected int userSocketPort = 0;
+    protected String userPortSocketAddr = "";
+    protected int userPortSocketPort = 0;
+
+    //数据传输流
+    protected boolean userDataTransferAborReceived = false;
+    protected Socket userDataTransferSocket = null;
+    protected BufferedReader userDataTransferReader = null;
+    protected PrintWriter userDataTransferWriterAscii = null;
+    protected BufferedWriter userDataTransferWriterBinary = null;
 }

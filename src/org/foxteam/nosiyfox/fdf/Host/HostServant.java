@@ -4,10 +4,10 @@ import org.foxteam.nosiyfox.fdf.FtpCodes;
 import org.foxteam.nosiyfox.fdf.FtpMain;
 import org.foxteam.nosiyfox.fdf.FtpUtil;
 import org.foxteam.nosiyfox.fdf.Tunables;
-import sun.net.NetworkClient;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,7 +17,7 @@ import java.net.Socket;
  * To change this template use File | Settings | File Templates.
  */
 public class HostServant extends Thread {
-    protected static int mNumClients = 0;
+    private static volatile AtomicInteger mNumClients = new AtomicInteger(0);
 
     protected final Tunables mTunables;
     protected final Socket mIncoming;
@@ -30,6 +30,105 @@ public class HostServant extends Thread {
         mTunables = tunables;
         mIncoming = socket;
     }
+
+    //**************************************************************************************************************
+    //数据传输流操作
+
+    private boolean ioOpenConnection(String msg) {
+
+        if (!isPortActivate() && !isPasvActivate()) {
+            //Oops! Something must go wrong!
+            return false;
+        }
+
+        mSession.userDataTransferAborReceived = false;
+
+        boolean connectCreated;
+        if (isPasvActivate()) {
+            connectCreated = ioStartConnectionPasv();
+        } else {
+            connectCreated = ioStartConnectionPort();
+        }
+
+        if (!connectCreated) return false;
+
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DATACONN, ' ', msg);
+
+        return true;
+    }
+
+    private void ioCloseConnection() {
+
+        if (mSession.userDataTransferReader != null) try {
+            mSession.userDataTransferReader.close();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        if (mSession.userDataTransferWriterAscii != null) mSession.userDataTransferWriterAscii.close();
+        if (mSession.userDataTransferWriterBinary != null) try {
+            mSession.userDataTransferWriterBinary.close();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        if (mSession.userDataTransferSocket != null) try {
+            mSession.userDataTransferSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+
+        mSession.userDataTransferSocket = null;
+        mSession.userDataTransferReader = null;
+        mSession.userDataTransferWriterAscii = null;
+        mSession.userDataTransferWriterBinary = null;
+    }
+
+    private boolean ioStartConnectionPasv() {
+        return false;
+    }
+
+    private boolean ioStartConnectionPort() {
+        Socket tempSocket = null;
+        BufferedReader tempReader = null;
+        PrintWriter tempWriterAscii = null;
+        BufferedWriter tempWriterBinary = null;
+        try {
+            tempSocket = new Socket(mSession.userPortSocketAddr, mSession.userPortSocketPort);
+            String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
+            tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream(), charSet));
+            OutputStream os = tempSocket.getOutputStream();
+            tempWriterBinary = new BufferedWriter(new OutputStreamWriter(os, charSet));
+            tempWriterAscii = new PrintWriter(tempWriterBinary, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+            //clean
+            if (tempReader != null) try {
+                tempReader.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            if (tempWriterAscii != null) tempWriterAscii.close();
+            if (tempWriterBinary != null) try {
+                tempWriterBinary.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            if (tempSocket != null) try {
+                tempSocket.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Failed to establish connection.");
+
+            return false;
+        }
+        mSession.userDataTransferSocket = tempSocket;
+        mSession.userDataTransferReader = tempReader;
+        mSession.userDataTransferWriterAscii = tempWriterAscii;
+        mSession.userDataTransferWriterBinary = tempWriterBinary;
+        return true;
+    }
+
+    //**************************************************************************************************************
 
     private void doClean() {
         if (mOut != null) mOut.close();
@@ -72,7 +171,7 @@ public class HostServant extends Thread {
     }
 
     private boolean checkLimits() {
-        if (mTunables.hostMaxClients > 0 && mNumClients > mTunables.hostMaxClients) {
+        if (mTunables.hostMaxClients > 0 && mNumClients.get() > mTunables.hostMaxClients) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TOO_MANY_USERS, ' ', "There are too many connected users, please try later.");
             return false;
         }
@@ -88,6 +187,12 @@ public class HostServant extends Thread {
         return mSession.loginFails <= mTunables.hostMaxLoginFails;
     }
 
+    private boolean checkFileAccess(String path) {
+        //验证是否为home的子目录并且目录是否可读
+        return path.startsWith(mSession.userHomeDir) && new File(path).canRead();
+
+    }
+
     private void handleCwd() {
         //获取真实路径
         String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
@@ -101,26 +206,51 @@ public class HostServant extends Thread {
         if (!f.exists() || !f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             return;
-        } else if (!f.canRead()) {
+        } else if (!checkFileAccess(rp)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
 
-        //验证是否为home的子目录
-        if (!rp.startsWith(mSession.userHomeDir)) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
-            return;
-        }
-
-        mSession.userCwd = "/" + rp.substring(mSession.userHomeDir.length());
+        mSession.userCwd = "/" + rp.substring(mSession.userHomeDir.length()).replace('\\', '/');
         mSession.userCurrentDir = rp;
 
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
     }
 
+    private void cleanPasv() {
+    }
+
+    private void cleanPort() {
+        mSession.userPortSocketAddr = "";
+        mSession.userPortSocketPort = 0;
+    }
+
+    private boolean isPasvActivate() {
+        return false;
+    }
+
+    private boolean isPortActivate() {
+        return !mSession.userPortSocketAddr.isEmpty();
+    }
+
+    private boolean checkDataTransferOk() {
+        if (!isPortActivate() && !isPortActivate()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Use PORT or PASV first.");
+            return false;
+        }
+        return true;
+    }
+
+    private void checkAbort() {
+        if (mSession.userDataTransferAborReceived) {
+            mSession.userDataTransferAborReceived = false;
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOROK, ' ', "ABOR successful.");
+        }
+    }
+
     private void handlePort() {
-        mSession.userSocketAddr = "";
-        mSession.userSocketPort = 0;
+        cleanPasv();
+        cleanPort();
         String[] values = mSession.ftpArg.split(",");
         if (values.length != 6) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
@@ -140,15 +270,107 @@ public class HostServant extends Thread {
         * 1) Reject requests not connecting to the control socket IP
         * 2) Reject connects to privileged ports
         */
-        if(!sockAddr.equals(mSession.userRemoteAddr) || sockPort < FtpMain.IPPORT_RESERVED){
+        if (!sockAddr.equals(mSession.userRemoteAddr) || sockPort < FtpMain.IPPORT_RESERVED) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
             return;
         }
 
-        mSession.userSocketAddr = sockAddr;
-        mSession.userSocketPort = sockPort;
+        mSession.userPortSocketAddr = sockAddr;
+        mSession.userPortSocketPort = sockPort;
 
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PORTOK, ' ', "PORT command successful. Consider using PASV.");
+    }
+
+    private void handleDirCommon(boolean fullDetails, boolean statCmd) {
+        if (!statCmd && !checkDataTransferOk()) {
+            return;
+        }
+
+        String dirNameStr = mSession.userCurrentDir; //默认为当前路径
+
+        String optionStr = "";
+        String filterStr;
+        if (!mSession.ftpArg.isEmpty() && mSession.ftpArg.startsWith("-")) {
+            int spaceIndex = mSession.ftpArg.indexOf(' ');
+            if (spaceIndex != -1) {
+                optionStr = mSession.ftpArg.substring(1, spaceIndex);
+                filterStr = mSession.ftpArg.substring(spaceIndex).trim();
+            } else {
+                optionStr = mSession.ftpArg;
+                filterStr = "";
+            }
+        } else {
+            filterStr = mSession.ftpArg;
+        }
+
+        boolean isDir = true;
+        boolean useControl = false;
+
+        if (!filterStr.isEmpty()) {
+            String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, filterStr);
+            if (!checkFileAccess(rp)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+                return;
+            }
+
+            //检查是否是目录
+            File tf = new File(rp);
+            if (tf.isDirectory()) {
+                isDir = true;
+                dirNameStr = rp;
+            } else {
+                //获取文件所在目录
+                isDir = false;
+                dirNameStr = tf.getParent();
+            }
+        }
+
+        //开始传输数据
+        if (statCmd) {
+            useControl = true;
+            optionStr += 'a';
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, '-', "Status follows:");
+        } else {
+            if (!ioOpenConnection("Here comes the directory listing.")) {
+                cleanPasv();
+                cleanPort();
+                return;
+            }
+        }
+
+        PrintWriter selectedWriter = useControl ? mOut : mSession.userDataTransferWriterAscii;
+
+        //开始列举目录
+        File fdir = new File(dirNameStr);
+        File[] files = fdir.listFiles();
+        if (files != null) {
+            String modifyDate;
+            for (File f : files) {
+                selectedWriter.println(FtpUtil.ftpFileNameFormat(f));
+            }
+        }
+        selectedWriter.flush();
+
+        boolean transferSuccess = true;
+
+        if (!statCmd) {
+            ioCloseConnection();
+        }
+
+        if (statCmd) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, ' ', "End of status");
+        } else if (!transferSuccess) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Directory send OK.");
+        }
+
+        checkAbort();
+
+        if (!statCmd) {
+            cleanPasv();
+            cleanPort();
+        }
     }
 
     private void handleFeatures() {
@@ -161,6 +383,7 @@ public class HostServant extends Thread {
     private void handleOpts() {
         mSession.ftpArg = mSession.ftpArg.toUpperCase();
         if ("UTF8 ON".equals(mSession.ftpArg)) {
+            mSession.isUTF8Required = true;
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_OPTSOK, ' ', "Always in UTF8 mode.");
         } else {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADOPTS, ' ', "Option not understood.");
@@ -230,11 +453,11 @@ public class HostServant extends Thread {
     public void run() {
         System.out.println("Session start!");
         while (true) {
-            mNumClients++;
+            mNumClients.incrementAndGet();
             //开始监听
             try {
-                mOut = new PrintWriter(mIncoming.getOutputStream(), true);
-                mIn = new BufferedReader(new InputStreamReader(mIncoming.getInputStream()));
+                mOut = new PrintWriter(new OutputStreamWriter(mIncoming.getOutputStream(), mTunables.hostRemoteCharset), true);
+                mIn = new BufferedReader(new InputStreamReader(mIncoming.getInputStream(), mTunables.hostRemoteCharset));
             } catch (IOException e) {
                 e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                 break;
@@ -255,7 +478,7 @@ public class HostServant extends Thread {
             break;
         }
         doClean();
-        mNumClients--;
+        mNumClients.decrementAndGet();
         System.out.println("Session exit!");
     }
 
@@ -320,8 +543,9 @@ public class HostServant extends Thread {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
             } else if ("SYST".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SYSTOK, ' ', "UNIX Type: L8");
+                //FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SYSTOK, ' ', "Windows_NT version 5.0");
             } else if ("LIST".equals(mSession.ftpCmd)) {
-
+                handleDirCommon(true, false);
             } else if ("TYPE".equals(mSession.ftpCmd)) {
                 if ("I".equals(mSession.ftpArg) || "L8".equals(mSession.ftpArg) || "L 8".equals(mSession.ftpArg)) {
                     mSession.isAscii = false;
@@ -334,6 +558,10 @@ public class HostServant extends Thread {
                 }
             } else if ("PORT".equals(mSession.ftpCmd)) {
                 handlePort();
+            } else if ("NLST".equals(mSession.ftpCmd)) {
+                handleDirCommon(false, false);
+            } else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOR_NOCONN, ' ', "No transfer to ABOR.");
             } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
             } else if ("OPTS".equals(mSession.ftpCmd)) {
@@ -346,6 +574,10 @@ public class HostServant extends Thread {
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Can't change to another user.");
                 }
+            } else if ("STAT".equals(mSession.ftpCmd) && mSession.ftpArg.isEmpty()) {
+
+            } else if ("STAT".equals(mSession.ftpCmd)) {
+                handleDirCommon(true, true);
             } else if ("PASS".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINOK, ' ', "Already logged in.");
             } else if (mSession.ftpCmd.isEmpty() && mSession.ftpArg.isEmpty()) {
