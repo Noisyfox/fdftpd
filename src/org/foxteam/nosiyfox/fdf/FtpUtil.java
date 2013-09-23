@@ -6,6 +6,8 @@ import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Vector;
+import java.util.regex.Pattern;
 
 /**
  * Created with IntelliJ IDEA.
@@ -72,6 +74,69 @@ public class FtpUtil {
             return "-rw-r-r--- 1 ftp      ftp            "
                     + file.length() + " " + timeString + " "
                     + file.getName();
+        }
+    }
+
+    public static File[] ftpListFileFilter(String path, String filter) {
+        try {
+            //找到第一个最后一级不包含通配符的路径
+            filter = filter.replace('\\', '/');//全部转成/分割
+            int firstWildcard1 = filter.indexOf('?');
+            int firstWildcard2 = filter.indexOf('*');
+            int firstWildcard;
+            if (firstWildcard1 == -1 && firstWildcard2 == -1) {
+                firstWildcard = -1;
+            } else if (firstWildcard1 == -1) {
+                firstWildcard = firstWildcard2;
+            } else if (firstWildcard2 == -1) {
+                firstWildcard = firstWildcard1;
+            } else {
+                firstWildcard = Math.min(firstWildcard1, firstWildcard2);
+            }
+            int lastSplashBeforeWildcard = filter.lastIndexOf('/', firstWildcard);
+            String newPath;
+            if (lastSplashBeforeWildcard == -1) {
+                newPath = "";
+            } else {
+                newPath = filter.substring(0, lastSplashBeforeWildcard);
+                if (lastSplashBeforeWildcard + 1 >= filter.length()) {
+                    filter = "";
+                } else {
+                    filter = filter.substring(lastSplashBeforeWildcard + 1);
+                }
+            }
+
+            newPath = FtpUtil.ftpGetRealPath(path, "", newPath);
+            File tFile = new File(newPath);
+            if (filter.isEmpty()) {
+                if (!tFile.exists() || !tFile.canRead()) return null;
+                if (tFile.isFile()) return new File[]{tFile};
+                else {
+                    return tFile.listFiles();
+                }
+            } else {
+                if (!tFile.exists() || !tFile.canRead() || tFile.isFile()) return null;
+                File[] fList = tFile.listFiles();
+                if (fList == null) return null;
+                //转义
+                filter = filter.replace(".", "\\.").replace("^", "\\^").replace("$", "\\$")
+                        .replace("+", "\\+").replace("{", "\\{").replace("}", "\\}").replace("[", "\\[")
+                        .replace("]", "\\]").replace("|", "\\|").replace("(", "\\(").replace(")", "\\)")
+                        .replace("?", ".").replace("*", ".*");
+                Pattern pattern = Pattern.compile(filter);
+                Vector<File> matchedFiles = new Vector<File>(fList.length);
+                for (File f : fList) {
+                    if (pattern.matcher(f.getName()).matches()) {
+                        matchedFiles.add(f);
+                    }
+                }
+                File[] mf = new File[matchedFiles.size()];
+                matchedFiles.toArray(mf);
+                return mf;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }

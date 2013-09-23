@@ -154,6 +154,7 @@ public class HostServant extends Thread {
         mSession.ftpArg = "";
         try {
             String line = mIn.readLine();
+            System.out.println("User:" + mSession.user + "Command:" + line);
             if (line != null) {
                 int i = line.indexOf(' ');
                 if (i != -1) {
@@ -306,6 +307,7 @@ public class HostServant extends Thread {
         boolean isDir = true;
         boolean useControl = false;
 
+        /*
         if (!filterStr.isEmpty()) {
             String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, filterStr);
             if (!checkFileAccess(rp)) {
@@ -324,6 +326,7 @@ public class HostServant extends Thread {
                 dirNameStr = tf.getParent();
             }
         }
+        */
 
         //开始传输数据
         if (statCmd) {
@@ -341,12 +344,16 @@ public class HostServant extends Thread {
         PrintWriter selectedWriter = useControl ? mOut : mSession.userDataTransferWriterAscii;
 
         //开始列举目录
-        File fdir = new File(dirNameStr);
-        File[] files = fdir.listFiles();
+        File[] files = FtpUtil.ftpListFileFilter(dirNameStr, filterStr);
         if (files != null) {
-            String modifyDate;
-            for (File f : files) {
-                selectedWriter.println(FtpUtil.ftpFileNameFormat(f));
+            if (fullDetails) {
+                for (File f : files) {
+                    selectedWriter.println(FtpUtil.ftpFileNameFormat(f));
+                }
+            } else {
+                for (File f : files) {
+                    selectedWriter.println(f.getName());
+                }
             }
         }
         selectedWriter.flush();
