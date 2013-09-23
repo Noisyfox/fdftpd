@@ -479,6 +479,27 @@ public class HostServant extends Thread {
         }
     }
 
+    private void handleSize(){
+        //获取真实路径
+        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+
+        if (rp.isEmpty()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
+            return;
+        }
+
+        File f = new File(rp);
+        if (!f.exists() || f.isDirectory()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
+            return;
+        } else if (!rp.startsWith(mSession.userHomeDir)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
+    }
+
     private void handleFeatures() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, '-', "Features:");
         //FtpUtil.ftpWriteStringRaw(mOut, " MDTM");
@@ -668,7 +689,11 @@ public class HostServant extends Thread {
                 handlePort();
             } else if ("NLST".equals(mSession.ftpCmd)) {
                 handleDirCommon(false, false);
-            } else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
+            } else if("SIZE".equals(mSession.ftpCmd)){
+                handleSize();
+            }
+
+            else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOR_NOCONN, ' ', "No transfer to ABOR.");
             } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
