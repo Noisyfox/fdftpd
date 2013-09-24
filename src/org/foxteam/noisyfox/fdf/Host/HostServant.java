@@ -708,6 +708,7 @@ public class HostServant extends Thread {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, '-', "Features:");
         FtpUtil.ftpWriteStringRaw(mOut, " MDTM");
         FtpUtil.ftpWriteStringRaw(mOut, " PASV");
+        FtpUtil.ftpWriteStringRaw(mOut, " REST STREAM");
         FtpUtil.ftpWriteStringRaw(mOut, " SIZE");
         FtpUtil.ftpWriteStringRaw(mOut, " UTF8");
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, ' ', "End");
@@ -891,7 +892,18 @@ public class HostServant extends Thread {
                 }
             } else if ("PORT".equals(mSession.ftpCmd)) {
                 handlePort();
-            } else if ("NLST".equals(mSession.ftpCmd)) {
+            } else if ("REST".equals(mSession.ftpCmd)) {
+                long pos = 0;
+                try {
+                    pos = Long.valueOf(mSession.ftpArg);
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
+                mSession.userFileRestartOffset = pos;
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RESTOK, ' ', "Restart position accepted (" + pos + ").");
+            }
+
+            else if ("NLST".equals(mSession.ftpCmd)) {
                 handleDirCommon(false, false);
             } else if ("SIZE".equals(mSession.ftpCmd)) {
                 handleSize();
