@@ -64,8 +64,13 @@ public class HostServant extends Thread {
 
     private void ioCloseConnection() {
 
-        if (mSession.userDataTransferReader != null) try {
-            mSession.userDataTransferReader.close();
+        if (mSession.userDataTransferReaderAscii != null) try {
+            mSession.userDataTransferReaderAscii.close();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        if (mSession.userDataTransferReaderBinary != null) try {
+            mSession.userDataTransferReaderBinary.close();
         } catch (IOException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
@@ -82,16 +87,18 @@ public class HostServant extends Thread {
         }
 
         mSession.userDataTransferSocket = null;
-        mSession.userDataTransferReader = null;
+        mSession.userDataTransferReaderAscii = null;
+        mSession.userDataTransferReaderBinary = null;
         mSession.userDataTransferWriterAscii = null;
         mSession.userDataTransferWriterBinary = null;
     }
 
     private boolean ioStartConnectionPasv() {
         Socket tempSocket = null;
-        BufferedReader tempReader = null;
+        BufferedReader tempReaderAscii = null;
+        BufferedInputStream tempReaderBinary = null;
         PrintWriter tempWriterAscii = null;
-        BufferedWriter tempWriterBinary = null;
+        BufferedOutputStream tempWriterBinary = null;
         try {
             tempSocket = mSession.userPasvSocketServer.accept();
             mSession.userPasvSocketServer.close();
@@ -109,15 +116,22 @@ public class HostServant extends Thread {
                 return false;
             }
             String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-            tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream(), charSet));
+            InputStream is = tempSocket.getInputStream();
+            tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
+            tempReaderBinary = new BufferedInputStream(is);
             OutputStream os = tempSocket.getOutputStream();
-            tempWriterBinary = new BufferedWriter(new OutputStreamWriter(os, charSet));
-            tempWriterAscii = new PrintWriter(tempWriterBinary, true);
+            tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
+            tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
             e.printStackTrace();
             //clean
-            if (tempReader != null) try {
-                tempReader.close();
+            if (tempReaderAscii != null) try {
+                tempReaderAscii.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            if (tempReaderBinary != null) try {
+                tempReaderBinary.close();
             } catch (IOException e1) {
                 e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
@@ -138,7 +152,8 @@ public class HostServant extends Thread {
         }
 
         mSession.userDataTransferSocket = tempSocket;
-        mSession.userDataTransferReader = tempReader;
+        mSession.userDataTransferReaderAscii = tempReaderAscii;
+        mSession.userDataTransferReaderBinary = tempReaderBinary;
         mSession.userDataTransferWriterAscii = tempWriterAscii;
         mSession.userDataTransferWriterBinary = tempWriterBinary;
 
@@ -147,21 +162,29 @@ public class HostServant extends Thread {
 
     private boolean ioStartConnectionPort() {
         Socket tempSocket = null;
-        BufferedReader tempReader = null;
+        BufferedReader tempReaderAscii = null;
+        BufferedInputStream tempReaderBinary = null;
         PrintWriter tempWriterAscii = null;
-        BufferedWriter tempWriterBinary = null;
+        BufferedOutputStream tempWriterBinary = null;
         try {
             tempSocket = new Socket(mSession.userPortSocketAddr, mSession.userPortSocketPort);
             String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-            tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream(), charSet));
+            InputStream is = tempSocket.getInputStream();
+            tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
+            tempReaderBinary = new BufferedInputStream(is);
             OutputStream os = tempSocket.getOutputStream();
-            tempWriterBinary = new BufferedWriter(new OutputStreamWriter(os, charSet));
-            tempWriterAscii = new PrintWriter(tempWriterBinary, true);
+            tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
+            tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
             e.printStackTrace();
             //clean
-            if (tempReader != null) try {
-                tempReader.close();
+            if (tempReaderAscii != null) try {
+                tempReaderAscii.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            if (tempReaderBinary != null) try {
+                tempReaderBinary.close();
             } catch (IOException e1) {
                 e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
@@ -181,7 +204,8 @@ public class HostServant extends Thread {
             return false;
         }
         mSession.userDataTransferSocket = tempSocket;
-        mSession.userDataTransferReader = tempReader;
+        mSession.userDataTransferReaderAscii = tempReaderAscii;
+        mSession.userDataTransferReaderBinary = tempReaderBinary;
         mSession.userDataTransferWriterAscii = tempWriterAscii;
         mSession.userDataTransferWriterBinary = tempWriterBinary;
         return true;
@@ -251,9 +275,14 @@ public class HostServant extends Thread {
         return mSession.loginFails <= mTunables.hostMaxLoginFails;
     }
 
-    private boolean checkFileAccess(String path) {
+    private boolean checkFileAccess(File f) {
         //验证是否为home的子目录并且目录是否可读
-        return path.startsWith(mSession.userHomeDir) && new File(path).canRead();
+        try {
+            return f.getCanonicalPath().startsWith(mSession.userHomeDir) && f.canRead();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            return false;
+        }
 
     }
 
@@ -270,7 +299,7 @@ public class HostServant extends Thread {
         if (!f.exists() || !f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             return;
-        } else if (!checkFileAccess(rp)) {
+        } else if (!checkFileAccess(f)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
@@ -326,7 +355,7 @@ public class HostServant extends Thread {
 
         //尝试开启端口监听
         int bindRetry = 10;
-        int minPort = 1024;
+        int minPort = 2048;
         int maxPort = 65535;
         int selectedPort;
         ServerSocket ss = null;
@@ -444,22 +473,30 @@ public class HostServant extends Thread {
 
         PrintWriter selectedWriter = useControl ? mOut : mSession.userDataTransferWriterAscii;
 
+        boolean transferSuccess = true;
         //开始列举目录
         File[] files = FtpUtil.ftpListFileFilter(dirNameStr, filterStr);
         if (files != null) {
             if (fullDetails) {
                 for (File f : files) {
                     selectedWriter.println(FtpUtil.ftpFileNameFormat(f));
+                    if (selectedWriter.checkError()) {
+                        transferSuccess = false;
+                        break;
+                    }
                 }
             } else {
                 for (File f : files) {
                     selectedWriter.println(f.getName());
+                    if (selectedWriter.checkError()) {
+                        transferSuccess = false;
+                        break;
+                    }
                 }
             }
         }
         selectedWriter.flush();
 
-        boolean transferSuccess = true;
 
         if (!statCmd) {
             ioCloseConnection();
@@ -481,7 +518,7 @@ public class HostServant extends Thread {
         }
     }
 
-    private void handleSize(){
+    private void handleSize() {
         //获取真实路径
         String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
 
@@ -504,7 +541,7 @@ public class HostServant extends Thread {
 
     private static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
 
-    private void handleMdtm(){
+    private void handleMdtm() {
         //获取真实路径
         String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
 
@@ -523,6 +560,151 @@ public class HostServant extends Thread {
         }
 
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', dateFormatMdtm.format(new Date(f.lastModified())));
+    }
+
+    private void handleRetr() {
+        if (!checkDataTransferOk()) {
+            return;
+        }
+
+        long fileOffset = mSession.userFileRestartOffset;
+        mSession.userFileRestartOffset = 0;
+        if (mSession.isAscii && fileOffset != 0) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "No support for resume of ASCII transfer.");
+            return;
+        }
+
+        //获取真实路径
+        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+        File f = new File(rp);
+        if (!checkFileAccess(f)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        BufferedReader br = null;
+        BufferedInputStream bis = null;
+        try {
+            if (mSession.isAscii) {
+                br = new BufferedReader(new InputStreamReader(new FileInputStream(f),
+                        mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset));
+            } else {
+                bis = new BufferedInputStream(new FileInputStream(f));
+                try {
+                    bis.skip(fileOffset);
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
+            return;
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
+            return;
+        }
+
+        //开始传输
+        StringBuilder sb = new StringBuilder();
+        sb.append("Opening ");
+        sb.append(mSession.isAscii ? "ASCII" : "BINARY");
+        sb.append(" mode data connection for ");
+        sb.append(mSession.ftpArg);
+        sb.append(" (");
+        sb.append(f.length());
+        sb.append(" bytes).");
+        if (!ioOpenConnection(sb.toString())) {
+            cleanPasv();
+            cleanPort();
+            if (mSession.isAscii) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+            } else {
+                try {
+                    bis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+            }
+            return;
+        }
+
+        boolean transferSuccess = true;
+        boolean fileReadSuccess = true;
+        if (mSession.isAscii) {
+            String line;
+            try {
+                while ((line = br.readLine()) != null) {
+                    mSession.userDataTransferWriterAscii.println(line);
+                    if (mSession.userDataTransferWriterAscii.checkError()) {
+                        transferSuccess = false;
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                fileReadSuccess = false;
+            } finally {
+                ioCloseConnection();
+
+                checkAbort();
+
+                cleanPasv();
+                cleanPort();
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+            }
+        } else {
+            byte[] bytes = new byte[1024];
+            try {
+                int size;
+                fileReadSuccess = false;
+                while ((size = bis.read(bytes)) != -1) {
+                    fileReadSuccess = true;
+                    transferSuccess = false;
+                    mSession.userDataTransferWriterBinary.write(bytes, 0, size);
+                    transferSuccess = true;
+                    fileReadSuccess = false;
+                }
+                transferSuccess = false;
+                mSession.userDataTransferWriterBinary.flush();
+                transferSuccess = true;
+                fileReadSuccess = true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                if(transferSuccess){
+                    fileReadSuccess = false;
+                }
+            } finally {
+                ioCloseConnection();
+
+                checkAbort();
+
+                cleanPasv();
+                cleanPort();
+                try {
+                    bis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+            }
+        }
+
+        if(!fileReadSuccess){
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDFILE, ' ', "Failure reading local file.");
+        } else if(!transferSuccess){
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Transfer complete.");
+        }
     }
 
     private void handleFeatures() {
@@ -692,7 +874,7 @@ public class HostServant extends Thread {
             } else if ("PASV".equals(mSession.ftpCmd) || "P@SW".equals(mSession.ftpCmd)) {
                 handlePasv();
             } else if ("RETR".equals(mSession.ftpCmd)) {
-
+                handleRetr();
             } else if ("NOOP".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
             } else if ("SYST".equals(mSession.ftpCmd)) {
@@ -714,17 +896,13 @@ public class HostServant extends Thread {
                 handlePort();
             } else if ("NLST".equals(mSession.ftpCmd)) {
                 handleDirCommon(false, false);
-            } else if("SIZE".equals(mSession.ftpCmd)){
+            } else if ("SIZE".equals(mSession.ftpCmd)) {
                 handleSize();
-            }
-
-            else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
+            } else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOR_NOCONN, ' ', "No transfer to ABOR.");
-            } else if("MDTM".equals(mSession.ftpCmd)){
+            } else if ("MDTM".equals(mSession.ftpCmd)) {
                 handleMdtm();
-            }
-
-            else if ("FEAT".equals(mSession.ftpCmd)) {
+            } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
             } else if ("OPTS".equals(mSession.ftpCmd)) {
                 handleOpts();

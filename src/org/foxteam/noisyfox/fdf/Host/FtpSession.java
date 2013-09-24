@@ -1,8 +1,6 @@
 package org.foxteam.noisyfox.fdf.Host;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -40,7 +38,11 @@ public class FtpSession {
     //数据传输流
     protected boolean userDataTransferAborReceived = false;
     protected Socket userDataTransferSocket = null;
-    protected BufferedReader userDataTransferReader = null;
+    protected BufferedReader userDataTransferReaderAscii = null;
+    protected BufferedInputStream userDataTransferReaderBinary = null;
     protected PrintWriter userDataTransferWriterAscii = null;
-    protected BufferedWriter userDataTransferWriterBinary = null;
+    protected BufferedOutputStream userDataTransferWriterBinary = null;
+
+    //文件传输状态
+    protected long userFileRestartOffset = 0;
 }
