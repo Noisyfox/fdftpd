@@ -1,6 +1,6 @@
-package org.foxteam.nosiyfox.fdf;
+package org.foxteam.noisyfox.fdf;
 
-import org.foxteam.nosiyfox.fdf.Host.Host;
+import org.foxteam.noisyfox.fdf.Host.Host;
 
 /**
  * Created with IntelliJ IDEA.

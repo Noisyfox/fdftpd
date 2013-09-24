@@ -1,6 +1,6 @@
-package org.foxteam.nosiyfox.fdf.Host;
+package org.foxteam.noisyfox.fdf.Host;
 
-import org.foxteam.nosiyfox.fdf.Tunables;
+import org.foxteam.noisyfox.fdf.Tunables;
 
 import java.io.IOException;
 import java.net.ServerSocket;

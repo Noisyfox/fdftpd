@@ -1,4 +1,4 @@
-package org.foxteam.nosiyfox.fdf;
+package org.foxteam.noisyfox.fdf;
 
 /**
  * Created with IntelliJ IDEA.

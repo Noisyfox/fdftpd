@@ -1,4 +1,4 @@
-package org.foxteam.nosiyfox.fdf.Host;
+package org.foxteam.noisyfox.fdf.Host;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

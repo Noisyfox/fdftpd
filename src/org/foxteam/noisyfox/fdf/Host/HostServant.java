@@ -1,9 +1,9 @@
-package org.foxteam.nosiyfox.fdf.Host;
+package org.foxteam.noisyfox.fdf.Host;
 
-import org.foxteam.nosiyfox.fdf.FtpCodes;
-import org.foxteam.nosiyfox.fdf.FtpMain;
-import org.foxteam.nosiyfox.fdf.FtpUtil;
-import org.foxteam.nosiyfox.fdf.Tunables;
+import org.foxteam.noisyfox.fdf.FtpCodes;
+import org.foxteam.noisyfox.fdf.FtpMain;
+import org.foxteam.noisyfox.fdf.FtpUtil;
+import org.foxteam.noisyfox.fdf.Tunables;
 
 import java.io.*;
 import java.net.*;

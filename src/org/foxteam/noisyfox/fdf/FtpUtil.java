@@ -1,4 +1,4 @@
-package org.foxteam.nosiyfox.fdf;
+package org.foxteam.noisyfox.fdf;
 
 import java.io.File;
 import java.io.IOException;
