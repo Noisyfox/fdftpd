@@ -1,9 +1,6 @@
 package org.foxteam.noisyfox.fdf.Host;
 
-import org.foxteam.noisyfox.fdf.FtpCodes;
-import org.foxteam.noisyfox.fdf.FtpMain;
-import org.foxteam.noisyfox.fdf.FtpUtil;
-import org.foxteam.noisyfox.fdf.Tunables;
+import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
 import java.net.*;
@@ -116,10 +113,10 @@ public class HostServant extends Thread {
                 return false;
             }
             String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-            InputStream is = tempSocket.getInputStream();
+            InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, mTunables.hostTransferRateMax);
             tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
             tempReaderBinary = new BufferedInputStream(is);
-            OutputStream os = tempSocket.getOutputStream();
+            OutputStream os = new RateRestrictedOutputStream(tempSocket.getOutputStream(), mSession, mTunables.hostTransferRateMax);
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
@@ -169,10 +166,10 @@ public class HostServant extends Thread {
         try {
             tempSocket = new Socket(mSession.userPortSocketAddr, mSession.userPortSocketPort);
             String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-            InputStream is = tempSocket.getInputStream();
+            InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, mTunables.hostTransferRateMax);
             tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
             tempReaderBinary = new BufferedInputStream(is);
-            OutputStream os = tempSocket.getOutputStream();
+            OutputStream os = new RateRestrictedOutputStream(tempSocket.getOutputStream(), mSession, mTunables.hostTransferRateMax);
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {

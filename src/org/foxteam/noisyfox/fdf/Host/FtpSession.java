@@ -1,5 +1,7 @@
 package org.foxteam.noisyfox.fdf.Host;
 
+import org.foxteam.noisyfox.fdf.RateRestriction;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -11,7 +13,7 @@ import java.net.Socket;
  * Time: 上午12:27
  * To change this template use File | Settings | File Templates.
  */
-public class FtpSession {
+public class FtpSession extends RateRestriction {
     protected String ftpCmd = "";
     protected String ftpArg = "";
 
@@ -45,4 +47,5 @@ public class FtpSession {
 
     //文件传输状态
     protected long userFileRestartOffset = 0;
+
 }
