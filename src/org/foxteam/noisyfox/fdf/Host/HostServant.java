@@ -4,6 +4,7 @@ import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
 import java.net.*;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
@@ -539,24 +540,50 @@ public class HostServant extends Thread {
     private static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
 
     private void handleMdtm() {
+        String fileName = mSession.ftpArg;
+        Date modifyTime = null;
+        boolean isSet = false;
+        //解析命令，判断是获取还是设置时间
+        int firstSpaceLoc = mSession.ftpArg.indexOf(' ');
+        if(firstSpaceLoc == 14){
+            String timeStr = mSession.ftpArg.substring(0, firstSpaceLoc);
+            try {
+                modifyTime = dateFormatMdtm.parse(timeStr);
+                fileName = mSession.ftpArg.substring(firstSpaceLoc).trim();
+                isSet = true;
+            } catch (ParseException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
         //获取真实路径
-        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, fileName);
 
         if (rp.isEmpty()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file modification time.");
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
+                    isSet ? "Could not set file modification time." : "Could not get file modification time.");
             return;
         }
 
         File f = new File(rp);
         if (!f.exists() || f.isDirectory()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file modification time..");
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
+                    isSet ? "Could not set file modification time." : "Could not get file modification time.");
             return;
         } else if (!rp.startsWith(mSession.userHomeDir)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
 
-        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', dateFormatMdtm.format(new Date(f.lastModified())));
+        if(isSet){
+            try{
+                f.setLastModified(modifyTime.getTime());
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', "File modification time set.");
+            }catch(Exception e){
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not set file modification time.");
+            }
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', dateFormatMdtm.format(new Date(f.lastModified())));
+        }
     }
 
     private void handleRetr() {
