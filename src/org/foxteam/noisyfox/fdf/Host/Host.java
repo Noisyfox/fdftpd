@@ -17,16 +17,16 @@ public class Host {
 
     private final Tunables mTunables;
 
-    public Host(Tunables tunables){
+    public Host(Tunables tunables) {
         mTunables = tunables;
     }
 
-    public void hostStart(){
+    public void hostStart() {
         System.out.println("Ftp server started!");
 
         try {
             ServerSocket s = new ServerSocket(mTunables.hostListenPort);
-            while(true){
+            while (true) {
                 Socket incoming = s.accept();
                 HostServant servant = new HostServant(mTunables, incoming);
                 servant.start();

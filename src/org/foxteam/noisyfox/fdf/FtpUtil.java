@@ -78,7 +78,7 @@ public class FtpUtil {
         } else {
             return String.format("-%s%s%sr-xr-x 1 0      0   %d %s %s",
                     file.canRead() ? "r" : "-", file.canWrite() ? "w" : "-", file.canExecute() ? "x" : "-",
-                    file.length() , timeString, file.getName());
+                    file.length(), timeString, file.getName());
         }
     }
 

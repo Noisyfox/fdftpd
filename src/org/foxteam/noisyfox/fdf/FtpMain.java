@@ -13,23 +13,23 @@ public class FtpMain {
     public static final String FDF_VER = "0.1";
     public static final int IPPORT_RESERVED = 1024;
 
-    public static void main(String args[]){
+    public static void main(String args[]) {
 
         Tunables tunables = new Tunables();
 
-        for(int i = 1; i < args.length; i++){
+        for (int i = 1; i < args.length; i++) {
             String arg = args[i];
-            if(arg.startsWith("-")){//设置
+            if (arg.startsWith("-")) {//设置
 
-            }else{//配置文件
+            } else {//配置文件
                 tunables.loadFromFile(arg);
             }
         }
 
-        if(tunables.isHost){
+        if (tunables.isHost) {
             Host h = new Host(tunables);
             h.hostStart();
-        }else{
+        } else {
 
         }
 

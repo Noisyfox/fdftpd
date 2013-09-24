@@ -545,7 +545,7 @@ public class HostServant extends Thread {
         boolean isSet = false;
         //解析命令，判断是获取还是设置时间
         int firstSpaceLoc = mSession.ftpArg.indexOf(' ');
-        if(firstSpaceLoc == 14){
+        if (firstSpaceLoc == 14) {
             String timeStr = mSession.ftpArg.substring(0, firstSpaceLoc);
             try {
                 modifyTime = dateFormatMdtm.parse(timeStr);
@@ -574,11 +574,11 @@ public class HostServant extends Thread {
             return;
         }
 
-        if(isSet){
-            try{
+        if (isSet) {
+            try {
                 f.setLastModified(modifyTime.getTime());
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', "File modification time set.");
-            }catch(Exception e){
+            } catch (Exception e) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not set file modification time.");
             }
         } else {
@@ -697,9 +697,9 @@ public class HostServant extends Thread {
             }
         }
 
-        if(!fileReadSuccess){
+        if (!fileReadSuccess) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDFILE, ' ', "Failure reading local file.");
-        } else if(!transferSuccess){
+        } else if (!transferSuccess) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
         } else {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Transfer complete.");
@@ -718,7 +718,7 @@ public class HostServant extends Thread {
             } catch (IOException e) {
                 e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
-        }else{
+        } else {
             try {
                 bis.close();
             } catch (IOException e) {
@@ -727,7 +727,7 @@ public class HostServant extends Thread {
         }
     }
 
-    private void handleUploadCommon(boolean isAppend, boolean isUnique){
+    private void handleUploadCommon(boolean isAppend, boolean isUnique) {
         if (!checkDataTransferOk()) {
             return;
         }
@@ -736,14 +736,14 @@ public class HostServant extends Thread {
         mSession.userFileRestartOffset = 0;
 
         //获取真实路径
-        if(mSession.ftpArg.isEmpty()){
+        if (mSession.ftpArg.isEmpty()) {
             mSession.ftpArg = "STOU";
         }
         String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
         File f = new File(rp);
         File nf = f;
         int suffix = 1;
-        while(nf.exists() && isUnique){//增加后缀避免重名
+        while (nf.exists() && isUnique) {//增加后缀避免重名
             nf = new File(rp + "." + suffix);
             suffix++;
         }
@@ -770,12 +770,12 @@ public class HostServant extends Thread {
         }
 
         String ioMsg;
-        if(isUnique){
+        if (isUnique) {
             ioMsg = "FILE: " + f.getName();
         } else {
             ioMsg = "Ok to send data.";
         }
-        if(!ioOpenConnection(ioMsg)){
+        if (!ioOpenConnection(ioMsg)) {
             cleanPasv();
             cleanPort();
             try {
@@ -1028,11 +1028,9 @@ public class HostServant extends Thread {
                 }
             } else if ("PORT".equals(mSession.ftpCmd)) {
                 handlePort();
-            } else if ("STOR".equals(mSession.ftpCmd)){
+            } else if ("STOR".equals(mSession.ftpCmd)) {
                 handleUploadCommon(false, false);
-            }
-
-            else if ("REST".equals(mSession.ftpCmd)) {
+            } else if ("REST".equals(mSession.ftpCmd)) {
                 long pos = 0;
                 try {
                     pos = Long.valueOf(mSession.ftpArg);
@@ -1041,9 +1039,7 @@ public class HostServant extends Thread {
                 }
                 mSession.userFileRestartOffset = pos;
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RESTOK, ' ', "Restart position accepted (" + pos + ").");
-            }
-
-            else if ("NLST".equals(mSession.ftpCmd)) {
+            } else if ("NLST".equals(mSession.ftpCmd)) {
                 handleDirCommon(false, false);
             } else if ("SIZE".equals(mSession.ftpCmd)) {
                 handleSize();
@@ -1051,23 +1047,21 @@ public class HostServant extends Thread {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOR_NOCONN, ' ', "No transfer to ABOR.");
             } else if ("MDTM".equals(mSession.ftpCmd)) {
                 handleMdtm();
-            } else if ("STRU".equals(mSession.ftpCmd)){
+            } else if ("STRU".equals(mSession.ftpCmd)) {
                 mSession.ftpArg = mSession.ftpArg.toUpperCase();
-                if("F".equals(mSession.ftpArg)){
+                if ("F".equals(mSession.ftpArg)) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STRUOK, ' ', "Structure set to F.");
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSTRU, ' ', "Bad STRU command.");
                 }
-            } else if ("MODE".equals(mSession.ftpCmd)){
+            } else if ("MODE".equals(mSession.ftpCmd)) {
                 mSession.ftpArg = mSession.ftpArg.toUpperCase();
-                if("S".equals(mSession.ftpArg)){
+                if ("S".equals(mSession.ftpArg)) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MODEOK, ' ', "Mode set to S.");
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADMODE, ' ', "Bad MODE command.");
                 }
-            }
-
-            else if ("FEAT".equals(mSession.ftpCmd)) {
+            } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
             } else if ("OPTS".equals(mSession.ftpCmd)) {
                 handleOpts();
