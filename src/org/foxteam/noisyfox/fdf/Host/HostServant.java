@@ -659,33 +659,25 @@ public class HostServant extends Thread {
         }
 
         boolean transferSuccess = true;
-        boolean fileReadSuccess = true;
-        if (mSession.isAscii) {
-            String line;
-            try {
+        boolean fileReadSuccess = false;
+        try {
+            if (mSession.isAscii) {
+                String line;
                 while ((line = br.readLine()) != null) {
+                    fileReadSuccess = true;
                     mSession.userDataTransferWriterAscii.println(line);
                     if (mSession.userDataTransferWriterAscii.checkError()) {
                         transferSuccess = false;
                         break;
                     }
+                    fileReadSuccess = false;
                 }
+                transferSuccess = false;
                 mSession.userDataTransferWriterAscii.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
-                fileReadSuccess = false;
-            } finally {
-                try {
-                    br.close();
-                } catch (IOException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                }
-            }
-        } else {
-            byte[] bytes = new byte[1024];
-            try {
+                transferSuccess = true;
+            } else {
+                byte[] bytes = new byte[1024];
                 int size;
-                fileReadSuccess = false;
                 while ((size = bis.read(bytes)) != -1) {
                     fileReadSuccess = true;
                     transferSuccess = false;
@@ -697,17 +689,11 @@ public class HostServant extends Thread {
                 mSession.userDataTransferWriterBinary.flush();
                 transferSuccess = true;
                 fileReadSuccess = true;
-            } catch (IOException e) {
-                e.printStackTrace();
-                if(transferSuccess){
-                    fileReadSuccess = false;
-                }
-            } finally {
-                try {
-                    bis.close();
-                } catch (IOException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            if (transferSuccess) {
+                fileReadSuccess = false;
             }
         }
 
@@ -725,6 +711,20 @@ public class HostServant extends Thread {
 
         cleanPasv();
         cleanPort();
+
+        if (mSession.isAscii) {
+            try {
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }else{
+            try {
+                bis.close();
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
     }
 
     private void handleUploadCommon(boolean isAppend, boolean isUnique){
@@ -767,13 +767,6 @@ public class HostServant extends Thread {
             }
         } catch (IOException e) {
             e.printStackTrace();
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_UPLOADFAIL, ' ', "Could not open exist file for overwrite.");
-            try {
-                raf.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-            return;
         }
 
         String ioMsg;
@@ -793,13 +786,12 @@ public class HostServant extends Thread {
         }
 
         //接收数据
-        boolean transferSuccess = true;
+        boolean transferSuccess = false;
         boolean fileWriteSuccess = true;
-        if (mSession.isAscii) {
-            String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-            String line;
-            try {
-                transferSuccess = false;
+        try {
+            if (mSession.isAscii) {
+                String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
+                String line;
                 while ((line = mSession.userDataTransferReaderAscii.readLine()) != null) {
                     byte[] bytes = line.getBytes(charSet);
                     transferSuccess = true;
@@ -810,15 +802,10 @@ public class HostServant extends Thread {
                 }
                 transferSuccess = true;
                 fileWriteSuccess = true;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else {
-            byte[] bytes = new byte[1024];
-            int size;
-            try {
-                transferSuccess = false;
-                while((size = mSession.userDataTransferReaderBinary.read(bytes)) != -1){
+            } else {
+                byte[] bytes = new byte[1024];
+                int size;
+                while ((size = mSession.userDataTransferReaderBinary.read(bytes)) != -1) {
                     transferSuccess = true;
                     fileWriteSuccess = false;
                     raf.write(bytes, 0, size);
@@ -827,14 +814,14 @@ public class HostServant extends Thread {
                 }
                 transferSuccess = true;
                 fileWriteSuccess = true;
-            } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
 
-        if(!fileWriteSuccess){
+        if (!fileWriteSuccess) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDFILE, ' ', "Failure writing to local file.");
-        } else if(!transferSuccess){
+        } else if (!transferSuccess) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure reading network stream.");
         } else {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Transfer complete.");
