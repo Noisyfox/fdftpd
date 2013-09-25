@@ -840,10 +840,40 @@ public class HostServant extends Thread {
         }
     }
 
+    //SITE is not supported on Windows
+    /*
+    private void handleSite(){
+        //get sub command
+        String subCommand = "";
+        String subArgument = "";
+        int firstSpacePos = mSession.ftpArg.indexOf(" ");
+        if(firstSpacePos != -1){
+            subCommand = mSession.ftpArg.substring(0, firstSpacePos).toUpperCase();
+            subArgument = mSession.ftpArg.substring(firstSpacePos).trim();
+        }
+        if("CHMOD".equals(subCommand) && mTunables.hostWriteEnabled
+                && mTunables.hostChmodEnabled){
+
+        } else if ("UMASK".equals(subCommand)){
+
+        } else if ("HELP".equals(subCommand)){
+            if(mTunables.hostWriteEnabled && mTunables.hostChmodEnabled){
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SITEHELP, ' ', "CHMOD UMASK HELP");
+            }else{
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SITEHELP, ' ', "UMASK HELP");
+            }
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown SITE command.");
+        }
+    }
+    */
+
     private void handleFeatures() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, '-', "Features:");
         FtpUtil.ftpWriteStringRaw(mOut, " MDTM");
-        FtpUtil.ftpWriteStringRaw(mOut, " PASV");
+        if (mTunables.hostPasvEnabled) {
+            FtpUtil.ftpWriteStringRaw(mOut, " PASV");
+        }
         FtpUtil.ftpWriteStringRaw(mOut, " REST STREAM");
         FtpUtil.ftpWriteStringRaw(mOut, " SIZE");
         FtpUtil.ftpWriteStringRaw(mOut, " UTF8");
@@ -1005,16 +1035,17 @@ public class HostServant extends Thread {
             } else if ("CDUP".equals(mSession.ftpCmd) || "XCUP".equals(mSession.ftpCmd)) {
                 mSession.ftpArg = "../";
                 handleCwd();
-            } else if ("PASV".equals(mSession.ftpCmd) || "P@SW".equals(mSession.ftpCmd)) {
+            } else if (("PASV".equals(mSession.ftpCmd) || "P@SW".equals(mSession.ftpCmd))
+                    && mTunables.hostPasvEnabled) {
                 handlePasv();
-            } else if ("RETR".equals(mSession.ftpCmd)) {
+            } else if ("RETR".equals(mSession.ftpCmd) && mTunables.hostDownloadEnabled) {
                 handleRetr();
             } else if ("NOOP".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
             } else if ("SYST".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SYSTOK, ' ', "UNIX Type: L8");
                 //FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SYSTOK, ' ', "Windows_NT version 5.0");
-            } else if ("LIST".equals(mSession.ftpCmd)) {
+            } else if ("LIST".equals(mSession.ftpCmd) && mTunables.hostDirListEnabled) {
                 handleDirCommon(true, false);
             } else if ("TYPE".equals(mSession.ftpCmd)) {
                 if ("I".equals(mSession.ftpArg) || "L8".equals(mSession.ftpArg) || "L 8".equals(mSession.ftpArg)) {
@@ -1026,31 +1057,38 @@ public class HostServant extends Thread {
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unrecognised TYPE command.");
                 }
-            } else if ("PORT".equals(mSession.ftpCmd)) {
+            } else if ("PORT".equals(mSession.ftpCmd) && mTunables.hostPortEnabled) {
                 handlePort();
-            } else if ("STOR".equals(mSession.ftpCmd)) {
+            } else if ("STOR".equals(mSession.ftpCmd) && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonUploadEnabled || !mSession.userAnon)) {
                 handleUploadCommon(false, false);
-            } else if("MKD".equals(mSession.ftpCmd) || "XMKD".equals(mSession.ftpCmd)){
+            } else if ("MKD".equals(mSession.ftpCmd) || "XMKD".equals(mSession.ftpCmd)
+                    && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonMkdirWriteEnabled || !mSession.userAnon)) {
                 String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
                 File f = new File(rp);
-                if(f.mkdirs()){
+                if (f.mkdirs()) {
                     mSession.ftpArg = mSession.ftpArg.replace("\"", "\"\"");
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MKDIROK, ' ', "\"" + mSession.ftpArg + "\" created.");
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
                 }
-            } else if ("RMD".equals(mSession.ftpCmd) || "XRMD".equals(mSession.ftpCmd)){
+            } else if ("RMD".equals(mSession.ftpCmd) || "XRMD".equals(mSession.ftpCmd)
+                    && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
                 String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
                 File f = new File(rp);
-                if(f.isDirectory() && f.delete()){
+                if (f.isDirectory() && f.delete()) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
                 }
-            } else if ("DELE".equals(mSession.ftpCmd)){
+            } else if ("DELE".equals(mSession.ftpCmd)
+                    && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
                 String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
                 File f = new File(rp);
-                if(!f.isDirectory() && f.delete()){
+                if (!f.isDirectory() && f.delete()) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
@@ -1064,37 +1102,45 @@ public class HostServant extends Thread {
                 }
                 mSession.userFileRestartOffset = pos;
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RESTOK, ' ', "Restart position accepted (" + pos + ").");
-            } else if ("RNFR".equals(mSession.ftpCmd)){
+            } else if ("RNFR".equals(mSession.ftpCmd)
+                    && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
                 mSession.userRnfrFile = null;
                 String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
                 File f = new File(rp);
-                if(f.exists()){
+                if (f.exists()) {
                     mSession.userRnfrFile = f;
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
                 }
-            } else if ("RNTO".equals(mSession.ftpCmd)){
-                if(mSession.userRnfrFile == null){
+            } else if ("RNTO".equals(mSession.ftpCmd)
+                    && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
+                if (mSession.userRnfrFile == null) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NEEDRNFR, ' ', "RNFR required first.");
                 } else {
                     String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
                     File f = new File(rp);
                     File from = mSession.userRnfrFile;
                     mSession.userRnfrFile = null;
-                    if(from.renameTo(f)){
+                    if (from.renameTo(f)) {
                         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RENAMEOK, ' ', "Rename successful.");
                     } else {
                         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
                     }
                 }
-            } else if ("NLST".equals(mSession.ftpCmd)) {
+            } else if ("NLST".equals(mSession.ftpCmd) && mTunables.hostDirListEnabled) {
                 handleDirCommon(false, false);
             } else if ("SIZE".equals(mSession.ftpCmd)) {
                 handleSize();
+            } else if ("SITE".equals(mSession.ftpCmd) && !mSession.userAnon) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_COMMANDNOTIMPL, ' ', "SITE not implemented.");
             } else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOR_NOCONN, ' ', "No transfer to ABOR.");
-            } else if("APPE".equals(mSession.ftpCmd)){
+            } else if ("APPE".equals(mSession.ftpCmd)
+                    && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
                 handleUploadCommon(true, false);
             } else if ("MDTM".equals(mSession.ftpCmd)) {
                 handleMdtm();
@@ -1112,15 +1158,17 @@ public class HostServant extends Thread {
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADMODE, ' ', "Bad MODE command.");
                 }
-            } else if("STOU".equals(mSession.ftpCmd)){
+            } else if ("STOU".equals(mSession.ftpCmd)
+                    && mTunables.hostWriteEnabled
+                    && (mTunables.hostAnonUploadEnabled || !mSession.userAnon)) {
                 handleUploadCommon(false, true);
-            } else if("ALLO".equals(mSession.ftpCmd)){
+            } else if ("ALLO".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ALLOOK, ' ', "ALLO command ignored.");
-            } else if("REIN".equals(mSession.ftpCmd)){
+            } else if ("REIN".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_COMMANDNOTIMPL, ' ', "REIN not implemented.");
-            } else if("ACCT".equals(mSession.ftpCmd)){
+            } else if ("ACCT".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_COMMANDNOTIMPL, ' ', "ACCT not implemented.");
-            } else if("SMNT".equals(mSession.ftpCmd)){
+            } else if ("SMNT".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_COMMANDNOTIMPL, ' ', "SMNT not implemented.");
             } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
@@ -1140,6 +1188,21 @@ public class HostServant extends Thread {
                 handleDirCommon(true, true);
             } else if ("PASS".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINOK, ' ', "Already logged in.");
+            } else if ("PASV".equals(mSession.ftpCmd) || "PORT".equals(mSession.ftpCmd) ||
+                    "STOR".equals(mSession.ftpCmd) || "MKD".equals(mSession.ftpCmd) ||
+                    "XMKD".equals(mSession.ftpCmd) || "RMD".equals(mSession.ftpCmd) ||
+                    "XRMD".equals(mSession.ftpCmd) || "DELE".equals(mSession.ftpCmd) ||
+                    "RNFR".equals(mSession.ftpCmd) || "RNTO".equals(mSession.ftpCmd) ||
+                    "SITE".equals(mSession.ftpCmd) || "APPE".equals(mSession.ftpCmd) ||
+                    "EPSV".equals(mSession.ftpCmd) || "EPRT".equals(mSession.ftpCmd) ||
+                    "RETR".equals(mSession.ftpCmd) || "LIST".equals(mSession.ftpCmd) ||
+                    "NLST".equals(mSession.ftpCmd) || "STOU".equals(mSession.ftpCmd) ||
+                    "ALLO".equals(mSession.ftpCmd) || "REIN".equals(mSession.ftpCmd) ||
+                    "ACCT".equals(mSession.ftpCmd) || "SMNT".equals(mSession.ftpCmd) ||
+                    "FEAT".equals(mSession.ftpCmd) || "OPTS".equals(mSession.ftpCmd) ||
+                    "STAT".equals(mSession.ftpCmd) || "PBSZ".equals(mSession.ftpCmd) ||
+                    "PROT".equals(mSession.ftpCmd)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied");
             } else if (mSession.ftpCmd.isEmpty() && mSession.ftpArg.isEmpty()) {
 
             } else {

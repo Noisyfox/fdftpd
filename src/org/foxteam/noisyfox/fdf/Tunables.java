@@ -25,6 +25,17 @@ public class Tunables {
 
     public long hostTransferRateMax = 1024 * 1024 * 10;//Long.MAX_VALUE;
 
+    public boolean hostPasvEnabled = true;
+    public boolean hostPortEnabled = true;
+    public boolean hostWriteEnabled = true;
+    public boolean hostDownloadEnabled = true;
+    public boolean hostDirListEnabled = true;
+    public boolean hostChmodEnabled = true;
+
+    public boolean hostAnonUploadEnabled = true;
+    public boolean hostAnonMkdirWriteEnabled = true;
+    public boolean hostAnonOtherWriteEnabled = true;
+
     public void loadFromFile(String filePath) {
 
     }
