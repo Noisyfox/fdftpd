@@ -15,7 +15,6 @@ public class Tunables {
     public int hostDataPort = 20;
     public int hostMaxLoginFails = 3;
 
-    public boolean hostNoAnonPassword = true;
 
     public String[] hostCmdsAllowed = {}; //全局白名单
     public String[] hostCmdsDenied = {}; //全局黑名单
@@ -27,14 +26,17 @@ public class Tunables {
 
     public boolean hostPasvEnabled = true;
     public boolean hostPortEnabled = true;
-    public boolean hostWriteEnabled = true;
+    public boolean hostWriteEnabled = false;
     public boolean hostDownloadEnabled = true;
     public boolean hostDirListEnabled = true;
     public boolean hostChmodEnabled = true;
+    public boolean hostAsciiUploadEnabled = false;
+    public boolean hostAsciiDownloadEnabled = false;
 
-    public boolean hostAnonUploadEnabled = true;
-    public boolean hostAnonMkdirWriteEnabled = true;
-    public boolean hostAnonOtherWriteEnabled = true;
+    public boolean hostAnonNoPassword = true;
+    public boolean hostAnonUploadEnabled = false;
+    public boolean hostAnonMkdirWriteEnabled = false;
+    public boolean hostAnonOtherWriteEnabled = false;
 
     public void loadFromFile(String filePath) {
 

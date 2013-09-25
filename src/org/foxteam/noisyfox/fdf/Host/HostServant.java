@@ -591,9 +591,11 @@ public class HostServant extends Thread {
             return;
         }
 
+        boolean useAscii = mSession.isAscii && mTunables.hostAsciiDownloadEnabled;
+
         long fileOffset = mSession.userFileRestartOffset;
         mSession.userFileRestartOffset = 0;
-        if (mSession.isAscii && fileOffset != 0) {
+        if (useAscii && fileOffset != 0) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "No support for resume of ASCII transfer.");
             return;
         }
@@ -609,7 +611,7 @@ public class HostServant extends Thread {
         BufferedReader br = null;
         BufferedInputStream bis = null;
         try {
-            if (mSession.isAscii) {
+            if (useAscii) {
                 br = new BufferedReader(new InputStreamReader(new FileInputStream(f),
                         mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset));
             } else {
@@ -633,7 +635,7 @@ public class HostServant extends Thread {
         //开始传输
         StringBuilder sb = new StringBuilder();
         sb.append("Opening ");
-        sb.append(mSession.isAscii ? "ASCII" : "BINARY");
+        sb.append(useAscii ? "ASCII" : "BINARY");
         sb.append(" mode data connection for ");
         sb.append(mSession.ftpArg);
         sb.append(" (");
@@ -642,7 +644,7 @@ public class HostServant extends Thread {
         if (!ioOpenConnection(sb.toString())) {
             cleanPasv();
             cleanPort();
-            if (mSession.isAscii) {
+            if (useAscii) {
                 try {
                     br.close();
                 } catch (IOException e) {
@@ -661,7 +663,7 @@ public class HostServant extends Thread {
         boolean transferSuccess = true;
         boolean fileReadSuccess = false;
         try {
-            if (mSession.isAscii) {
+            if (useAscii) {
                 String line;
                 while ((line = br.readLine()) != null) {
                     fileReadSuccess = true;
@@ -712,7 +714,7 @@ public class HostServant extends Thread {
         cleanPasv();
         cleanPort();
 
-        if (mSession.isAscii) {
+        if (useAscii) {
             try {
                 br.close();
             } catch (IOException e) {
@@ -789,7 +791,7 @@ public class HostServant extends Thread {
         boolean transferSuccess = false;
         boolean fileWriteSuccess = true;
         try {
-            if (mSession.isAscii) {
+            if (mSession.isAscii && mTunables.hostAsciiUploadEnabled) {
                 String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
                 String line;
                 while ((line = mSession.userDataTransferReaderAscii.readLine()) != null) {
@@ -909,7 +911,7 @@ public class HostServant extends Thread {
                 mSession.user = mSession.ftpArg;
                 mSession.ftpArg = mSession.ftpArg.toUpperCase();
                 mSession.userAnon = "FTP".equals(mSession.ftpArg) || "ANONYMOUS".equals(mSession.ftpArg);
-                if (mSession.userAnon && mTunables.hostNoAnonPassword) {
+                if (mSession.userAnon && mTunables.hostAnonNoPassword) {
                     mSession.ftpArg = "<no password>";
                     if (handlePass()) {
                         break;
