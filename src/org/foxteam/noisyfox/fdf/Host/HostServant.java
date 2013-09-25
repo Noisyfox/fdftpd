@@ -1030,7 +1030,18 @@ public class HostServant extends Thread {
                 handlePort();
             } else if ("STOR".equals(mSession.ftpCmd)) {
                 handleUploadCommon(false, false);
-            } else if ("REST".equals(mSession.ftpCmd)) {
+            } else if("MKD".equals(mSession.ftpCmd) || "XMKD".equals(mSession.ftpCmd)){
+                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+                File f = new File(rp);
+                if(f.mkdirs()){
+                    mSession.ftpArg = mSession.ftpArg.replace("\"", "\"\"");
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MKDIROK, ' ', "\"" + mSession.ftpArg + "\" created.");
+                } else {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
+                }
+            }
+
+            else if ("REST".equals(mSession.ftpCmd)) {
                 long pos = 0;
                 try {
                     pos = Long.valueOf(mSession.ftpArg);
