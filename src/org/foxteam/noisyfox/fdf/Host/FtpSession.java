@@ -48,4 +48,6 @@ public class FtpSession extends RateRestriction {
     //文件传输状态
     protected long userFileRestartOffset = 0;
 
+    protected File userRnfrFile = null;
+
 }

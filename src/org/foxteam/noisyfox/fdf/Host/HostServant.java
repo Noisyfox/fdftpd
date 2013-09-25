@@ -1064,6 +1064,30 @@ public class HostServant extends Thread {
                 }
                 mSession.userFileRestartOffset = pos;
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RESTOK, ' ', "Restart position accepted (" + pos + ").");
+            } else if ("RNFR".equals(mSession.ftpCmd)){
+                mSession.userRnfrFile = null;
+                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+                File f = new File(rp);
+                if(f.exists()){
+                    mSession.userRnfrFile = f;
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
+                } else {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+                }
+            } else if ("RNTO".equals(mSession.ftpCmd)){
+                if(mSession.userRnfrFile == null){
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NEEDRNFR, ' ', "RNFR required first.");
+                } else {
+                    String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+                    File f = new File(rp);
+                    File from = mSession.userRnfrFile;
+                    mSession.userRnfrFile = null;
+                    if(from.renameTo(f)){
+                        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RENAMEOK, ' ', "Rename successful.");
+                    } else {
+                        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+                    }
+                }
             } else if ("NLST".equals(mSession.ftpCmd)) {
                 handleDirCommon(false, false);
             } else if ("SIZE".equals(mSession.ftpCmd)) {
