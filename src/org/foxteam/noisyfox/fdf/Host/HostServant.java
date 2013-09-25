@@ -1070,6 +1070,8 @@ public class HostServant extends Thread {
                 handleSize();
             } else if ("ABOR".equals(mSession.ftpCmd) || "\377\364\377\362ABOR".equals(mSession.ftpCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ABOR_NOCONN, ' ', "No transfer to ABOR.");
+            } else if("APPE".equals(mSession.ftpCmd)){
+                handleUploadCommon(true, false);
             } else if ("MDTM".equals(mSession.ftpCmd)) {
                 handleMdtm();
             } else if ("STRU".equals(mSession.ftpCmd)) {
@@ -1086,6 +1088,10 @@ public class HostServant extends Thread {
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADMODE, ' ', "Bad MODE command.");
                 }
+            } else if("STOU".equals(mSession.ftpCmd)){
+                handleUploadCommon(false, true);
+            } else if("ALLO".equals(mSession.ftpCmd)){
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ALLOOK, ' ', "ALLO command ignored.");
             } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
             } else if ("OPTS".equals(mSession.ftpCmd)) {
