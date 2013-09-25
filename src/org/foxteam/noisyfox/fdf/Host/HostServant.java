@@ -3,7 +3,8 @@ package org.foxteam.noisyfox.fdf.Host;
 import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
-import java.net.*;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -1064,7 +1065,7 @@ public class HostServant extends Thread {
             } else if ("STOR".equals(mSession.ftpCmd) && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonUploadEnabled || !mSession.userAnon)) {
                 handleUploadCommon(false, false);
-            } else if ("MKD".equals(mSession.ftpCmd) || "XMKD".equals(mSession.ftpCmd)
+            } else if (("MKD".equals(mSession.ftpCmd) || "XMKD".equals(mSession.ftpCmd))
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonMkdirWriteEnabled || !mSession.userAnon)) {
                 String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
@@ -1075,7 +1076,7 @@ public class HostServant extends Thread {
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
                 }
-            } else if ("RMD".equals(mSession.ftpCmd) || "XRMD".equals(mSession.ftpCmd)
+            } else if (("RMD".equals(mSession.ftpCmd) || "XRMD".equals(mSession.ftpCmd))
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
                 String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
