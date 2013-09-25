@@ -28,7 +28,7 @@ public class HostServant extends Thread {
     protected PrintWriter mOut;
     protected BufferedReader mIn;
 
-    protected FtpSession mSession;
+    protected HostSession mSession;
 
     protected HostServant(Tunables tunables, Socket socket) {
         mTunables = tunables;
@@ -357,7 +357,7 @@ public class HostServant extends Thread {
         int minPort = 2048;
         int maxPort = 65535;
         int selectedPort;
-        ServerSocket ss = null;
+        ServerSocket ss;
         while (true) {
             bindRetry--;
             if (bindRetry <= 0) {
@@ -972,7 +972,7 @@ public class HostServant extends Thread {
 
             greeting();
 
-            mSession = new FtpSession();
+            mSession = new HostSession();
             String oAddr = mIncoming.getRemoteSocketAddress().toString();
             mSession.userRemoteAddr = oAddr.substring(1, oAddr.indexOf(':'));
 

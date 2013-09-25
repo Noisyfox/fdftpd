@@ -13,7 +13,7 @@ import java.net.Socket;
  * Time: 上午12:27
  * To change this template use File | Settings | File Templates.
  */
-public class FtpSession extends RateRestriction {
+public class HostSession extends RateRestriction {
     protected String ftpCmd = "";
     protected String ftpArg = "";
 

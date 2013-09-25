@@ -12,11 +12,13 @@ import org.foxteam.noisyfox.fdf.Host.Host;
 public class FtpMain {
     public static final String FDF_VER = "0.1";
     public static final int IPPORT_RESERVED = 1024;
+    public static final String CONFIG_DEFAULT_PATH = "fdftpd.config";
 
     public static void main(String args[]) {
 
         Tunables tunables = new Tunables();
 
+        tunables.loadFromFile(CONFIG_DEFAULT_PATH);
         for (int i = 1; i < args.length; i++) {
             String arg = args[i];
             if (arg.startsWith("-")) {//设置
