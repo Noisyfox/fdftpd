@@ -33,7 +33,7 @@ public class Tunables {
     public boolean hostAsciiUploadEnabled = false;
     public boolean hostAsciiDownloadEnabled = false;
 
-    public boolean hostAnonNoPassword = true;
+    public boolean hostAnonNoPassword = false;
     public boolean hostAnonUploadEnabled = false;
     public boolean hostAnonMkdirWriteEnabled = false;
     public boolean hostAnonOtherWriteEnabled = false;
