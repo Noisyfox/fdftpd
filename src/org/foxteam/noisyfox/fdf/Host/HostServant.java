@@ -1039,6 +1039,14 @@ public class HostServant extends Thread {
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
                 }
+            } else if ("RMD".equals(mSession.ftpCmd) || "XRMD".equals(mSession.ftpCmd)){
+                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+                File f = new File(rp);
+                if(f.isDirectory() && f.delete()){
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
+                } else {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
+                }
             }
 
             else if ("REST".equals(mSession.ftpCmd)) {
