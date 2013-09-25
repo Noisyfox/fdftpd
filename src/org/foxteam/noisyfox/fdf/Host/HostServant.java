@@ -1047,9 +1047,15 @@ public class HostServant extends Thread {
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
                 }
-            }
-
-            else if ("REST".equals(mSession.ftpCmd)) {
+            } else if ("DELE".equals(mSession.ftpCmd)){
+                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+                File f = new File(rp);
+                if(!f.isDirectory() && f.delete()){
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
+                } else {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
+                }
+            } else if ("REST".equals(mSession.ftpCmd)) {
                 long pos = 0;
                 try {
                     pos = Long.valueOf(mSession.ftpArg);
