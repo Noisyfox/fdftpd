@@ -1092,6 +1092,12 @@ public class HostServant extends Thread {
                 handleUploadCommon(false, true);
             } else if("ALLO".equals(mSession.ftpCmd)){
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ALLOOK, ' ', "ALLO command ignored.");
+            } else if("REIN".equals(mSession.ftpCmd)){
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_COMMANDNOTIMPL, ' ', "REIN not implemented.");
+            } else if("ACCT".equals(mSession.ftpCmd)){
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_COMMANDNOTIMPL, ' ', "ACCT not implemented.");
+            } else if("SMNT".equals(mSession.ftpCmd)){
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_COMMANDNOTIMPL, ' ', "SMNT not implemented.");
             } else if ("FEAT".equals(mSession.ftpCmd)) {
                 handleFeatures();
             } else if ("OPTS".equals(mSession.ftpCmd)) {
