@@ -66,11 +66,17 @@ public class HostDirectoryMapper {
                     throw new IllegalStateException("Editor already committed or given up!");
                 }
                 isCommited = true;
+                Path[] paths = new Path[mPaths.size()];
+                for (int i = 0; i < paths.length; i++) {
+                    paths[i] = Path.valueOf(mPaths.get(i));
+                    if (!paths[i].isFullPath() || !paths[i].isChildPath(Path.valueOf("/"))) {
+                        return false;
+                    }
+                }
 
-                for (String p : mPaths) {
+                for (Path p : paths) {
                     PathNode node = mRootNode;
-                    Path path = Path.valueOf(p);
-                    String[] levels = path.toArray();
+                    String[] levels = p.toArray();
                     for (String s : levels) {
                         PathNode _tmpNode = node.nextLevel.get(s);
                         if (_tmpNode == null) {
