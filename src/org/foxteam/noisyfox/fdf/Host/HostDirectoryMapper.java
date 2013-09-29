@@ -1,6 +1,9 @@
 package org.foxteam.noisyfox.fdf.Host;
 
+import org.foxteam.noisyfox.fdf.Path;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created with IntelliJ IDEA.
@@ -13,6 +16,8 @@ public class HostDirectoryMapper {
 
     private final Object syncObj = new Object();
 
+    private final PathNode mRootNode = new PathNode();
+
     public Editor edit(int node) {
         return new Editor(node);
     }
@@ -20,11 +25,30 @@ public class HostDirectoryMapper {
     /**
      * 文件夹映射，返回指定的目录所在的节点编号。
      * 如果该路径不指向任何节点，则返回-1（通常表明该路径存在于本地）
+     *
      * @param path 需要映射的文件路径
      * @return 节点编号，或-1
      */
-    public int map(String path){
-        return -1;
+    public int map(String path) {
+        Path p = Path.valueOf(path);
+        String[] pathLevels = p.toArray();
+        PathNode node = mRootNode;
+        for (String s : pathLevels) {
+            PathNode _tmpNode = node.nextLevel.get(s);
+            if (_tmpNode != null) {
+                node = _tmpNode;
+            } else {
+                break;
+            }
+        }
+
+        return node.nodeNumber;
+    }
+
+    private class PathNode {
+        String dirName;
+        int nodeNumber = -1;
+        HashMap<String, PathNode> nextLevel = new HashMap<String, PathNode>();
     }
 
     public class Editor {
@@ -43,10 +67,22 @@ public class HostDirectoryMapper {
                 }
                 isCommited = true;
 
-                for(String p : mPaths){
-
+                for (String p : mPaths) {
+                    PathNode node = mRootNode;
+                    Path path = Path.valueOf(p);
+                    String[] levels = path.toArray();
+                    for (String s : levels) {
+                        PathNode _tmpNode = node.nextLevel.get(s);
+                        if (_tmpNode == null) {
+                            _tmpNode = new PathNode();
+                            _tmpNode.dirName = s;
+                            node.nextLevel.put(s, _tmpNode);
+                        }
+                        node = _tmpNode;
+                    }
+                    node.nodeNumber = mNode;
                 }
-                return false;
+                return true;
             }
         }
 

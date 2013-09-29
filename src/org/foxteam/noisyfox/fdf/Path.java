@@ -2,6 +2,7 @@ package org.foxteam.noisyfox.fdf;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 
 /**
@@ -253,9 +254,21 @@ public class Path {
         }
     }
 
+    public String[] toArray(){
+        return Arrays.copyOf(mLevels, mLevels.length);
+    }
+
     @Override
     public String toString() {
         return getAbsolutePath();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if(Path.class.isInstance(obj)){
+             return toString().equals(obj.toString());
+        }
+        return false;
     }
 
     public static Path valueOf(String path) {
