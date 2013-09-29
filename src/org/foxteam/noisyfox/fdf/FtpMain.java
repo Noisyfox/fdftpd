@@ -1,6 +1,7 @@
 package org.foxteam.noisyfox.fdf;
 
 import org.foxteam.noisyfox.fdf.Host.Host;
+import org.foxteam.noisyfox.fdf.Node.Node;
 
 /**
  * Created with IntelliJ IDEA.
@@ -12,14 +13,17 @@ import org.foxteam.noisyfox.fdf.Host.Host;
 public class FtpMain {
     public static final String FDF_VER = "0.1";
     public static final int IPPORT_RESERVED = 1024;
-    public static final String CONFIG_DEFAULT_PATH = "fdftpd.config";
+    public static final String CONFIG_DEFAULT_PATH = "fdftpd.conf";
 
     public static void main(String args[]) {
+
+        Path p = Path.valueOf("C:\\");
+        Path p2 = p.link("/");
 
         Tunables tunables = new Tunables();
 
         tunables.loadFromFile(CONFIG_DEFAULT_PATH);
-        for (int i = 1; i < args.length; i++) {
+        for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.startsWith("-")) {//设置
 
@@ -32,7 +36,8 @@ public class FtpMain {
             Host h = new Host(tunables);
             h.hostStart();
         } else {
-
+            Node n = new Node(tunables);
+            n.nodeStart();
         }
 
     }

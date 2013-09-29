@@ -81,4 +81,10 @@ public class FtpCodes {
     public static final int FTP_NOPERM = 550;
     public static final int FTP_UPLOADFAIL = 553;
 
+    //Host Node通讯代码
+    public static final int HOST_CHALLENGEOK = 900;
+    public static final int HOST_BADRESPONDE = 901;
+    public static final int HOST_RESPONDEOK = 902;
+    public static final int HOST_DMAP = 903;
+
 }

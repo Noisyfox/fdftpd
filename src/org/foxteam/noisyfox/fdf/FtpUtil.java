@@ -1,8 +1,8 @@
 package org.foxteam.noisyfox.fdf;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -35,6 +35,7 @@ public class FtpUtil {
         out.flush();
     }
 
+    /*
     public static String ftpGetRealPath(String home, String cur, String path) {
 
         if (path.startsWith("~") || path.startsWith("/") || path.startsWith("\\")) {
@@ -51,6 +52,22 @@ public class FtpUtil {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
         return "";
+    }
+     */
+
+    public static Path ftpGetRealPath(Path home, Path cur, Path path) {
+        int rela = path.getRelativity();
+        Path rp = null;
+        switch(rela){
+            case Path.RELA_CURR:
+                rp = cur.link(path);
+                break;
+            case Path.RELA_HOME:
+            case Path.RELA_ROOT:
+                rp = home.link(path);
+                break;
+        }
+        return rp;
     }
 
     private static SimpleDateFormat dateFormatYear = new SimpleDateFormat("MMM dd yyyy", Locale.ENGLISH);
@@ -82,7 +99,7 @@ public class FtpUtil {
         }
     }
 
-    public static File[] ftpListFileFilter(String path, String filter) {
+    public static File[] ftpListFileFilter(Path path, String filter) {
         try {
             //找到第一个最后一级不包含通配符的路径
             filter = filter.replace('\\', '/');//全部转成/分割
@@ -111,8 +128,8 @@ public class FtpUtil {
                 }
             }
 
-            newPath = FtpUtil.ftpGetRealPath(path, "", newPath);
-            File tFile = new File(newPath);
+            Path targetPath = FtpUtil.ftpGetRealPath(path, Path.valueOf("."), Path.valueOf(newPath));
+            File tFile = targetPath.getFile();
             if (filter.isEmpty()) {
                 if (!tFile.exists() || !tFile.canRead()) return null;
                 if (tFile.isFile()) return new File[]{tFile};
@@ -143,5 +160,98 @@ public class FtpUtil {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public static String hashString(String data, String algorithm) {
+        if (data == null)
+            return null;
+        try {
+            MessageDigest mdInst = MessageDigest.getInstance(algorithm);
+            byte btInput[] = data.getBytes();
+            mdInst.update(btInput);
+            byte md[] = mdInst.digest();
+            StringBuilder sb = new StringBuilder(64);
+            for (byte b : md) {
+                sb.append(String.format("%02X", b));
+            }
+
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String hashBytes(byte[] data, String algorithm) {
+        if (data == null)
+            return null;
+        try {
+            MessageDigest mdInst = MessageDigest.getInstance(algorithm);
+            mdInst.update(data);
+            byte md[] = mdInst.digest();
+            StringBuilder sb = new StringBuilder(64);
+            for (byte b : md) {
+                sb.append(String.format("%02X", b));
+            }
+
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String[] loadLinesFromFile(Path path, boolean ignoreComment){
+        Vector<String> strings = new Vector<String>();
+        File f = path.getFile();
+        BufferedReader br;
+        try {
+            br = new BufferedReader(new InputStreamReader(new FileInputStream(f)));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
+        String cfgLine;
+        try {
+            if(ignoreComment){
+                while((cfgLine = br.readLine()) != null){
+                    if(cfgLine.isEmpty() || cfgLine.startsWith("#"))continue;
+                    strings.add(cfgLine.trim());
+                }
+            } else {
+                while((cfgLine = br.readLine()) != null){
+                    strings.add(cfgLine.trim());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            try {
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        String[] array = new String[strings.size()];
+        strings.toArray(array);
+        return array;
+    }
+
+    public static int getNodeNumber(String prefix, String value){
+        int preLen = prefix.length();
+        if(preLen >= value.length()){
+            return -1;
+        }
+        String v = value.substring(preLen);
+        int number = -1;
+
+        try{
+            number = Integer.parseInt(v);
+        }catch(NumberFormatException e){
+            e.printStackTrace();
+        }
+
+        return number;
     }
 }

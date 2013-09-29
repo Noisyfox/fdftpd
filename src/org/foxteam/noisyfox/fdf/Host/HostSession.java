@@ -1,5 +1,6 @@
 package org.foxteam.noisyfox.fdf.Host;
 
+import org.foxteam.noisyfox.fdf.Path;
 import org.foxteam.noisyfox.fdf.RateRestriction;
 
 import java.io.*;
@@ -27,9 +28,8 @@ public class HostSession extends RateRestriction {
     protected String[] userCmdsAllowed = {}; //用户白名单
     protected String[] userCmdsDenied = {}; //用户黑名单
 
-    protected String userCwd = "/";
-    protected String userHomeDir = "C:\\";
-    protected String userCurrentDir = userHomeDir;
+    protected Path userHomeDir = Path.valueOf("C:\\");
+    protected Path userCurrentDir = userHomeDir;
 
     protected String userRemoteAddr = "";
     protected String userPortSocketAddr = "";

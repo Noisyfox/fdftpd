@@ -107,18 +107,19 @@ public class HostServant extends Thread {
             String clientAddr = oAddr.substring(1, oAddr.indexOf(':'));
             if (!mSession.userRemoteAddr.equals(clientAddr)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Security: Bad IP connecting.");
-                if (tempSocket != null) try {
+                try {
                     tempSocket.close();
                 } catch (IOException e1) {
                     e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                 }
                 return false;
             }
+            long maxRate = mSession.userAnon ? mTunables.hostAnonTransferRateMax : mTunables.hostTransferRateMax;
             String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-            InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, mTunables.hostTransferRateMax);
+            InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, maxRate);
             tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
             tempReaderBinary = new BufferedInputStream(is);
-            OutputStream os = new RateRestrictedOutputStream(tempSocket.getOutputStream(), mSession, mTunables.hostTransferRateMax);
+            OutputStream os = new RateRestrictedOutputStream(tempSocket.getOutputStream(), mSession, maxRate);
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
@@ -126,24 +127,15 @@ public class HostServant extends Thread {
             //clean
             if (tempReaderAscii != null) try {
                 tempReaderAscii.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException ignored) {
             }
             if (tempReaderBinary != null) try {
                 tempReaderBinary.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
-            if (tempWriterAscii != null) tempWriterAscii.close();
-            if (tempWriterBinary != null) try {
-                tempWriterBinary.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException ignored) {
             }
             if (tempSocket != null) try {
                 tempSocket.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException ignored) {
             }
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Failed to establish connection.");
 
@@ -166,12 +158,13 @@ public class HostServant extends Thread {
         PrintWriter tempWriterAscii = null;
         BufferedOutputStream tempWriterBinary = null;
         try {
+            long maxRate = mSession.userAnon ? mTunables.hostAnonTransferRateMax : mTunables.hostTransferRateMax;
             tempSocket = new Socket(mSession.userPortSocketAddr, mSession.userPortSocketPort);
             String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-            InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, mTunables.hostTransferRateMax);
+            InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, maxRate);
             tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
             tempReaderBinary = new BufferedInputStream(is);
-            OutputStream os = new RateRestrictedOutputStream(tempSocket.getOutputStream(), mSession, mTunables.hostTransferRateMax);
+            OutputStream os = new RateRestrictedOutputStream(tempSocket.getOutputStream(), mSession, maxRate);
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
@@ -179,24 +172,15 @@ public class HostServant extends Thread {
             //clean
             if (tempReaderAscii != null) try {
                 tempReaderAscii.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException ignored) {
             }
             if (tempReaderBinary != null) try {
                 tempReaderBinary.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
-            if (tempWriterAscii != null) tempWriterAscii.close();
-            if (tempWriterBinary != null) try {
-                tempWriterBinary.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException ignored) {
             }
             if (tempSocket != null) try {
                 tempSocket.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException ignored) {
             }
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Failed to establish connection.");
 
@@ -218,15 +202,13 @@ public class HostServant extends Thread {
 
         if (mIn != null) try {
             mIn.close();
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (IOException ignored) {
         }
         mIn = null;
 
         try {
             mIncoming.close();
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (IOException ignored) {
         }
 
         cleanPasv();
@@ -240,7 +222,6 @@ public class HostServant extends Thread {
         mSession.ftpArg = "";
         try {
             String line = mIn.readLine();
-            System.out.println("User:" + mSession.user + ";Command:" + line);
             if (line != null) {
                 int i = line.indexOf(' ');
                 if (i != -1) {
@@ -248,6 +229,11 @@ public class HostServant extends Thread {
                     mSession.ftpArg = line.substring(i).trim();
                 } else {
                     mSession.ftpCmd = line;
+                }
+                if ("PASS".equals(mSession.ftpCmd)) {
+                    System.out.println("User:" + mSession.user + ";Command:" + mSession.ftpCmd + " <hidden>");
+                } else {
+                    System.out.println("User:" + mSession.user + ";Command:" + mSession.ftpCmd + " " + mSession.ftpArg);
                 }
                 return true;
             }
@@ -266,7 +252,11 @@ public class HostServant extends Thread {
     }
 
     private void greeting() {
-        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_GREET, ' ', "(fdFTPd " + FtpMain.FDF_VER + " )");
+        if (mTunables.hostFtpdBanner.isEmpty()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_GREET, ' ', "(fdFTPd " + FtpMain.FDF_VER + " )");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_GREET, ' ', mTunables.hostFtpdBanner);
+        }
     }
 
     private boolean checkLoginFail() {
@@ -274,36 +264,40 @@ public class HostServant extends Thread {
         return mSession.loginFails <= mTunables.hostMaxLoginFails;
     }
 
-    private boolean checkFileAccess(File f) {
+    private boolean checkFileAccess(Path f) {
         //验证是否为home的子目录并且目录是否可读
+        /*
         try {
             return f.getCanonicalPath().startsWith(mSession.userHomeDir) && f.canRead();
         } catch (IOException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             return false;
         }
-
+        */
+        return f.isChildPath(mSession.userHomeDir) && f.getFile().canRead();
     }
 
     private void handleCwd() {
         //获取真实路径
-        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+        File f = rp.getFile();
+        /*
         if (rp.isEmpty()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             return;
         }
 
         File f = new File(rp);
+        */
+
         if (!f.exists() || !f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             return;
-        } else if (!checkFileAccess(f)) {
+        } else if (!checkFileAccess(rp)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
 
-        mSession.userCwd = "/" + rp.substring(mSession.userHomeDir.length()).replace('\\', '/');
         mSession.userCurrentDir = rp;
 
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
@@ -417,7 +411,7 @@ public class HostServant extends Thread {
             return;
         }
 
-        String dirNameStr = mSession.userCurrentDir; //默认为当前路径
+        Path dirNameStr = mSession.userCurrentDir; //默认为当前路径
 
         String optionStr = "";
         String filterStr;
@@ -438,7 +432,7 @@ public class HostServant extends Thread {
 
         /*
         if (!filterStr.isEmpty()) {
-            String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, filterStr);
+            String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, filterStr);
             if (!checkFileAccess(rp)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
                 return;
@@ -519,18 +513,20 @@ public class HostServant extends Thread {
 
     private void handleSize() {
         //获取真实路径
-        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
 
+        /*
         if (rp.isEmpty()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
             return;
         }
+        */
 
-        File f = new File(rp);
+        File f = rp.getFile();
         if (!f.exists() || f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
             return;
-        } else if (!rp.startsWith(mSession.userHomeDir)) {
+        } else if (!rp.isChildPath(mSession.userHomeDir)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
@@ -541,7 +537,7 @@ public class HostServant extends Thread {
     private static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
 
     private void handleMdtm() {
-        String fileName = mSession.ftpArg;
+        Path fileName = null;
         Date modifyTime = null;
         boolean isSet = false;
         //解析命令，判断是获取还是设置时间
@@ -550,27 +546,32 @@ public class HostServant extends Thread {
             String timeStr = mSession.ftpArg.substring(0, firstSpaceLoc);
             try {
                 modifyTime = dateFormatMdtm.parse(timeStr);
-                fileName = mSession.ftpArg.substring(firstSpaceLoc).trim();
+                fileName = Path.valueOf(mSession.ftpArg.substring(firstSpaceLoc).trim());
                 isSet = true;
             } catch (ParseException e) {
                 e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
         }
+        if(!isSet){
+            fileName = Path.valueOf(mSession.ftpArg);
+        }
         //获取真实路径
-        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, fileName);
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, fileName);
 
+        /*
         if (rp.isEmpty()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
                     isSet ? "Could not set file modification time." : "Could not get file modification time.");
             return;
         }
+        */
 
-        File f = new File(rp);
+        File f = rp.getFile();
         if (!f.exists() || f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
                     isSet ? "Could not set file modification time." : "Could not get file modification time.");
             return;
-        } else if (!rp.startsWith(mSession.userHomeDir)) {
+        } else if (!rp.isChildPath(mSession.userHomeDir)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
@@ -602,13 +603,13 @@ public class HostServant extends Thread {
         }
 
         //获取真实路径
-        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-        File f = new File(rp);
-        if (!checkFileAccess(f)) {
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+        if (!checkFileAccess(rp)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
 
+        File f = rp.getFile();
         BufferedReader br = null;
         BufferedInputStream bis = null;
         try {
@@ -679,7 +680,7 @@ public class HostServant extends Thread {
                 mSession.userDataTransferWriterAscii.flush();
                 transferSuccess = true;
             } else {
-                byte[] bytes = new byte[1024];
+                byte[] bytes = new byte[10240];
                 int size;
                 while ((size = bis.read(bytes)) != -1) {
                     fileReadSuccess = true;
@@ -742,15 +743,17 @@ public class HostServant extends Thread {
         if (mSession.ftpArg.isEmpty()) {
             mSession.ftpArg = "STOU";
         }
-        String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-        File f = new File(rp);
-        File nf = f;
-        int suffix = 1;
-        while (nf.exists() && isUnique) {//增加后缀避免重名
-            nf = new File(rp + "." + suffix);
-            suffix++;
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+        File f = rp.getFile();
+        {
+            File nf = f;
+            int suffix = 1;
+            while (nf.exists() && isUnique) {//增加后缀避免重名
+                nf = new File(rp.getAbsolutePath() + "." + suffix);
+                suffix++;
+            }
+            f = nf;
         }
-        f = nf;
         RandomAccessFile raf;
         try {
             raf = new RandomAccessFile(f, "rw");
@@ -806,7 +809,7 @@ public class HostServant extends Thread {
                 transferSuccess = true;
                 fileWriteSuccess = true;
             } else {
-                byte[] bytes = new byte[1024];
+                byte[] bytes = new byte[10240];
                 int size;
                 while ((size = mSession.userDataTransferReaderBinary.read(bytes)) != -1) {
                     transferSuccess = true;
@@ -831,9 +834,7 @@ public class HostServant extends Thread {
         }
 
         ioCloseConnection();
-
         checkAbort();
-
         cleanPasv();
         cleanPort();
         try {
@@ -894,7 +895,16 @@ public class HostServant extends Thread {
     }
 
     private boolean handlePass() {
-        if (mSession.userAnon) {
+        if (mSession.userAnon && mTunables.hostAnonEnabled) {
+            System.out.println("Anonmyous login with email " + mSession.ftpArg);
+            //check for banned email
+            if (mTunables.hostAnonDenyEmailEnabled) {
+                for (String s : mTunables.hostAnonDenyEmail) {
+                    if (s.equals(mSession.ftpArg)) {
+                        return false;
+                    }
+                }
+            }
             postLogin();
             return true;
         }
@@ -1031,7 +1041,7 @@ public class HostServant extends Thread {
                 break;
             } else if ("PWD".equals(mSession.ftpCmd) || "XPWD".equals(mSession.ftpCmd)) {
                 //路径中的双引号加倍
-                String cwd = mSession.userCwd.replace("\"", "\"\"");
+                String cwd = mSession.userCurrentDir.getRelativePath(mSession.userHomeDir).substring(1).replace("\"", "\"\"");
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PWDOK, ' ', "\"" + cwd + "\"");
             } else if ("CWD".equals(mSession.ftpCmd) || "XCWD".equals(mSession.ftpCmd)) {
                 handleCwd();
@@ -1068,8 +1078,8 @@ public class HostServant extends Thread {
             } else if (("MKD".equals(mSession.ftpCmd) || "XMKD".equals(mSession.ftpCmd))
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonMkdirWriteEnabled || !mSession.userAnon)) {
-                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-                File f = new File(rp);
+                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+                File f = rp.getFile();
                 if (f.mkdirs()) {
                     mSession.ftpArg = mSession.ftpArg.replace("\"", "\"\"");
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MKDIROK, ' ', "\"" + mSession.ftpArg + "\" created.");
@@ -1079,8 +1089,8 @@ public class HostServant extends Thread {
             } else if (("RMD".equals(mSession.ftpCmd) || "XRMD".equals(mSession.ftpCmd))
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
-                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-                File f = new File(rp);
+                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+                File f = rp.getFile();
                 if (f.isDirectory() && f.delete()) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
                 } else {
@@ -1089,8 +1099,8 @@ public class HostServant extends Thread {
             } else if ("DELE".equals(mSession.ftpCmd)
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
-                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-                File f = new File(rp);
+                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+                File f = rp.getFile();
                 if (!f.isDirectory() && f.delete()) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
                 } else {
@@ -1109,8 +1119,8 @@ public class HostServant extends Thread {
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
                 mSession.userRnfrFile = null;
-                String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-                File f = new File(rp);
+                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+                File f = rp.getFile();
                 if (f.exists()) {
                     mSession.userRnfrFile = f;
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
@@ -1123,8 +1133,8 @@ public class HostServant extends Thread {
                 if (mSession.userRnfrFile == null) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NEEDRNFR, ' ', "RNFR required first.");
                 } else {
-                    String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCwd, mSession.ftpArg);
-                    File f = new File(rp);
+                    Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+                    File f = rp.getFile();
                     File from = mSession.userRnfrFile;
                     mSession.userRnfrFile = null;
                     if (from.renameTo(f)) {
@@ -1205,7 +1215,7 @@ public class HostServant extends Thread {
                     "FEAT".equals(mSession.ftpCmd) || "OPTS".equals(mSession.ftpCmd) ||
                     "STAT".equals(mSession.ftpCmd) || "PBSZ".equals(mSession.ftpCmd) ||
                     "PROT".equals(mSession.ftpCmd)) {
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied");
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             } else if (mSession.ftpCmd.isEmpty() && mSession.ftpArg.isEmpty()) {
 
             } else {

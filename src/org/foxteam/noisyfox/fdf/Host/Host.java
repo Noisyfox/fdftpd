@@ -16,14 +16,18 @@ import java.net.Socket;
 public class Host {
 
     private final Tunables mTunables;
+    private final HostDirectoryMapper mDirMapper;
 
     public Host(Tunables tunables) {
         mTunables = tunables;
+        mDirMapper = new HostDirectoryMapper();
     }
 
     public void hostStart() {
         System.out.println("Ftp server started!");
-
+        for(HostNodeDefinition hnd : mTunables.hostNodes){
+            new HostNodeConnector(hnd, mDirMapper).start();
+        }
         try {
             ServerSocket s = new ServerSocket(mTunables.hostListenPort);
             while (true) {

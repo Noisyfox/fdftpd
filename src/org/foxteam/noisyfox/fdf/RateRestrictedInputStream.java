@@ -8,7 +8,7 @@ import java.io.InputStream;
  * User: Noisyfox
  * Date: 13-9-24
  * Time: 下午7:15
- * To change this template use File | Settings | File Templates.
+ * 有速度限制的 InputStream.
  */
 public class RateRestrictedInputStream extends InputStream {
 
@@ -27,7 +27,7 @@ public class RateRestrictedInputStream extends InputStream {
         mRateMax = rateMax;
     }
 
-    private final void checkRate() {
+    private void checkRate() {
         long currentTime = System.currentTimeMillis();
         long dTimeStart = currentTime - mRateRestriction.userFileTransferStartTime;
         long dTimeLast = currentTime - mRateRestriction.userFileTransferLastTime;
@@ -46,8 +46,7 @@ public class RateRestrictedInputStream extends InputStream {
                 try {
                     Thread.sleep(sleepTime);
                     currentTime += sleepTime;
-                } catch (InterruptedException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                } catch (InterruptedException ignored) {
                 }
             }
         }
