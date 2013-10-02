@@ -31,7 +31,11 @@ public class HostDirectoryMapper {
      */
     public int map(String path) {
         Path p = Path.valueOf(path);
-        String[] pathLevels = p.toArray();
+        return map(p);
+    }
+
+    public int map(Path path) {
+        String[] pathLevels = path.toArray();
         PathNode node = mRootNode;
         for (String s : pathLevels) {
             PathNode _tmpNode = node.nextLevel.get(s);

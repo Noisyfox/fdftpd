@@ -112,7 +112,9 @@ public class NodeCenter {
         while (readCmdArg()){
             if("DMAP".equals(mHostCmd)){
                 handleDmap();
-            } else {
+            } else if ("NOOP".equals(mHostCmd)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
+            }else {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
         }

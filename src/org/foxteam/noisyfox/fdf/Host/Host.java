@@ -24,10 +24,17 @@ public class Host {
     }
 
     public void hostStart() {
-        System.out.println("Ftp server started!");
+        System.out.println("Starting node connector.");
         for(HostNodeDefinition hnd : mTunables.hostNodes){
             new HostNodeConnector(hnd, mDirMapper).start();
         }
+        System.out.println("Wait 5 seconds before start listening.");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException ignored) {
+        }
+
+        System.out.println("Ftp server started!");
         try {
             ServerSocket s = new ServerSocket(mTunables.hostListenPort);
             while (true) {

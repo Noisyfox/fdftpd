@@ -5,6 +5,8 @@ import org.foxteam.noisyfox.fdf.FtpUtil;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  * Created with IntelliJ IDEA.
@@ -14,8 +16,10 @@ import java.net.Socket;
  * To change this template use File | Settings | File Templates.
  */
 public class HostNodeConnector extends Thread {
+    private final Object mWaitObject = new Object();
     private final HostNodeDefinition mHostNodeDefinition;
     private final HostDirectoryMapper mHostDirectoryMapper;
+    private final Queue<SessionRequest> mSessionRequestQueue = new LinkedList<SessionRequest>();
     protected Socket mConnecting;
     protected PrintWriter mOut;
     protected BufferedReader mIn;
@@ -132,11 +136,23 @@ public class HostNodeConnector extends Thread {
         //request for dir map
         updateDirectoryMapper();
 
+        //主逻辑
         while (true) {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException ignored) {
-
+            synchronized (mWaitObject){
+                FtpUtil.ftpWriteStringRaw(mOut, "NOOP");//发送心跳
+                if (!readStatus() || mStatusCode != FtpCodes.FTP_NOOPOK) { //挂了
+                    break;
+                }
+                while(!mSessionRequestQueue.isEmpty()){//处理node连接请求
+                    SessionRequest sessionRequest = mSessionRequestQueue.poll();
+                    synchronized (sessionRequest.mWaitObj){
+                        sessionRequest.mWaitObj.notify();
+                    }
+                }
+                try {
+                    mWaitObject.wait(1000 * 10);//等待10秒后重新开始检测
+                } catch (InterruptedException ignored) {
+                }
             }
         }
     }
@@ -182,6 +198,39 @@ public class HostNodeConnector extends Thread {
             } else {
                 System.out.println("Error commit directory mapper.");
             }
+        }
+    }
+
+    public HostNodeSession getNodeSession(HostSession session){
+        if(Thread.currentThread().equals(this)){
+            throw new IllegalThreadStateException("Unable to call getNodeSession() at the connector's thread!");
+        }
+
+        final Object waitObj = new Object();
+        final SessionRequest request= new SessionRequest(session, waitObj);
+
+        synchronized (waitObj){
+            try {
+                synchronized (mWaitObject){
+                    mSessionRequestQueue.offer(request);
+                    mWaitObject.notifyAll();
+                }
+                waitObj.wait();
+            } catch (InterruptedException ignored) {
+            }
+        }
+
+        return request.mNodeSession;
+    }
+
+    private class SessionRequest{
+        HostNodeSession mNodeSession = null;
+        final HostSession  mHostSession;
+        final Object mWaitObj;
+
+        SessionRequest(HostSession session, Object waitObj){
+            mHostSession = session;
+            mWaitObj = waitObj;
         }
     }
 }
