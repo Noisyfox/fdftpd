@@ -47,12 +47,24 @@ public class Host {
             ServerSocket s = new ServerSocket(mTunables.hostListenPort);
             while (true) {
                 Socket incoming = s.accept();
-                HostServant servant = new HostServant(mTunables, incoming);
+                HostServant servant = new HostServant(this, incoming);
                 servant.start();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+    }
+
+    public Tunables getTunables(){
+        return mTunables;
+    }
+
+    public HostDirectoryMapper getDirMapper(){
+        return mDirMapper;
+    }
+
+    public HostNodeConnector getHostNodeConnector(int number){
+        return mNodeConnectorMap.get(number);
     }
 }

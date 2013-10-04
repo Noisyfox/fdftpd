@@ -23,6 +23,7 @@ public class HostServant extends Thread {
 
     private final static Random generator = new Random();//随机数
 
+    protected final Host mHost;
     protected final Tunables mTunables;
     protected final Socket mIncoming;
     protected PrintWriter mOut;
@@ -30,8 +31,9 @@ public class HostServant extends Thread {
 
     protected HostSession mSession;
 
-    protected HostServant(Tunables tunables, Socket socket) {
-        mTunables = tunables;
+    protected HostServant(Host host, Socket socket) {
+        mHost = host;
+        mTunables = host.getTunables();
         mIncoming = socket;
     }
 
