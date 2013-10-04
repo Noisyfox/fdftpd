@@ -897,6 +897,9 @@ public class HostServant extends Thread {
     }
 
     private boolean handlePass() {
+        if (mSession.ftpArg.isEmpty()) {//不允许空密码登陆
+            return false;
+        }
         if (mSession.userAnon && mTunables.hostAnonEnabled) {
             System.out.println("Anonmyous login with email " + mSession.ftpArg);
             //check for banned email
@@ -907,7 +910,6 @@ public class HostServant extends Thread {
                     }
                 }
             }
-            postLogin();
             return true;
         }
 
@@ -943,6 +945,7 @@ public class HostServant extends Thread {
                     continue;
                 }
                 if (handlePass()) {
+                    postLogin();
                     break;
                 } else {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Login incorrect.");
