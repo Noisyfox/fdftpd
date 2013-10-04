@@ -910,6 +910,8 @@ public class HostServant extends Thread {
                     }
                 }
             }
+            mSession.userHomeDir = mTunables.hostAnonHome; //加载anon设置
+            mSession.userCurrentDir = mSession.userHomeDir;
             return true;
         }
 

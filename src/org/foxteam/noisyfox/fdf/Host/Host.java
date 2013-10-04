@@ -56,15 +56,15 @@ public class Host {
 
     }
 
-    public Tunables getTunables(){
+    public Tunables getTunables() {
         return mTunables;
     }
 
-    public HostDirectoryMapper getDirMapper(){
+    public HostDirectoryMapper getDirMapper() {
         return mDirMapper;
     }
 
-    public HostNodeConnector getHostNodeConnector(int number){
+    public HostNodeConnector getHostNodeConnector(int number) {
         return mNodeConnectorMap.get(number);
     }
 }

@@ -43,6 +43,7 @@ public class Tunables {
     public boolean hostAsciiDownloadEnabled = false;
 
     public boolean hostAnonEnabled = true;
+    public Path hostAnonHome = Path.valueOf("/");
     public boolean hostAnonNoPassword = false;
     public boolean hostAnonUploadEnabled = false;
     public boolean hostAnonMkdirWriteEnabled = false;
@@ -109,6 +110,8 @@ public class Tunables {
                 } else if (isHost) {
                     if ("anonymous_enable".equals(key)) {
                         hostAnonEnabled = Boolean.parseBoolean(value);
+                    } else if ("anon_home".equals(key)) {
+                        hostAnonHome = Path.valueOf(value);
                     } else if ("anon_no_password".equals(key)) {
                         hostAnonNoPassword = Boolean.parseBoolean(value);
                     } else if ("write_enable".equals(key)) {
