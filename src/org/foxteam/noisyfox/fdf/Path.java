@@ -1,7 +1,6 @@
 package org.foxteam.noisyfox.fdf;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -17,6 +16,7 @@ import java.util.HashMap;
  */
 public class Path {
     private static final HashMap<String, Path> mMappedPath = new HashMap<String, Path>();
+
     static {
         Path p = new Path(".");
         mMappedPath.put(".", p);
@@ -148,7 +148,7 @@ public class Path {
         }
 
         int s = startCount;
-        if(endCount <= path.startCount){//前一个的结尾被消完
+        if (endCount <= path.startCount) {//前一个的结尾被消完
             s += path.startCount - endCount;
         }
 
@@ -254,7 +254,7 @@ public class Path {
         }
     }
 
-    public String[] toArray(){
+    public String[] toArray() {
         return Arrays.copyOf(mLevels, mLevels.length);
     }
 
@@ -265,8 +265,8 @@ public class Path {
 
     @Override
     public boolean equals(Object obj) {
-        if(Path.class.isInstance(obj)){
-             return toString().equals(obj.toString());
+        if (Path.class.isInstance(obj)) {
+            return toString().equals(obj.toString());
         }
         return false;
     }
@@ -276,7 +276,7 @@ public class Path {
         return p == null ? new Path(path) : p;
     }
 
-    public static Path valueOf(File f){
+    public static Path valueOf(File f) {
         return valueOf(f.getAbsolutePath());
     }
 

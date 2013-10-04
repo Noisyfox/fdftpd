@@ -4,9 +4,11 @@ import org.foxteam.noisyfox.fdf.FtpCodes;
 import org.foxteam.noisyfox.fdf.FtpUtil;
 
 import java.io.*;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.Random;
 
 /**
  * Created with IntelliJ IDEA.
@@ -16,6 +18,8 @@ import java.util.Queue;
  * To change this template use File | Settings | File Templates.
  */
 public class HostNodeConnector extends Thread {
+    private final static Random generator = new Random();//随机数
+
     private final Object mWaitObject = new Object();
     private final HostNodeDefinition mHostNodeDefinition;
     private final HostDirectoryMapper mHostDirectoryMapper;
@@ -138,14 +142,15 @@ public class HostNodeConnector extends Thread {
 
         //主逻辑
         while (true) {
-            synchronized (mWaitObject){
+            synchronized (mWaitObject) {
                 FtpUtil.ftpWriteStringRaw(mOut, "NOOP");//发送心跳
                 if (!readStatus() || mStatusCode != FtpCodes.FTP_NOOPOK) { //挂了
                     break;
                 }
-                while(!mSessionRequestQueue.isEmpty()){//处理node连接请求
+                while (!mSessionRequestQueue.isEmpty()) {//处理node连接请求
                     SessionRequest sessionRequest = mSessionRequestQueue.poll();
-                    synchronized (sessionRequest.mWaitObj){
+                    doPort(sessionRequest);
+                    synchronized (sessionRequest.mWaitObj) {
                         sessionRequest.mWaitObj.notify();
                     }
                 }
@@ -153,6 +158,63 @@ public class HostNodeConnector extends Thread {
                     mWaitObject.wait(1000 * 10);//等待10秒后重新开始检测
                 } catch (InterruptedException ignored) {
                 }
+            }
+        }
+    }
+
+    private void doPort(SessionRequest sessionRequest) {
+        //打开连接端口
+        int bindRetry = 10;
+        int minPort = 1024;
+        int maxPort = 65535;
+        int selectedPort;
+        ServerSocket ss;
+        while (true) {
+            bindRetry--;
+            if (bindRetry <= 0) {
+                return;
+            }
+            selectedPort = minPort + generator.nextInt(maxPort - minPort) + 1;//随机端口
+            //尝试打开端口
+            try {
+                ss = new ServerSocket(selectedPort);
+                break;
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
+        //请求连接
+        //构造地址串
+        FtpUtil.ftpWriteStringRaw(mOut, "PORT " + selectedPort);
+        Socket tempSocket = null;
+        try {
+            tempSocket = ss.accept();
+            //检查是否是来自指定node的连接
+            String oAddr = tempSocket.getRemoteSocketAddress().toString();
+            String nodeAddr = oAddr.substring(1, oAddr.indexOf(':'));
+            if (!mHostNodeDefinition.adderss.equals(nodeAddr)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_BADSENDCONN, ' ', "Security: Bad IP connecting.");
+                try {
+                    tempSocket.close();
+                } catch (IOException ignored) {
+                }
+                return;
+            }
+            //save node session
+            sessionRequest.mNodeSession = new HostNodeSession(tempSocket);
+            sessionRequest.mNodeSession.start();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            //clean
+            if (tempSocket != null) try {
+                tempSocket.close();
+            } catch (IOException ignored) {
+            }
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_BADSENDCONN, ' ', "Failed to establish connection.");
+        } finally {
+            try {
+                ss.close();
+            } catch (IOException ignored) {
             }
         }
     }
@@ -193,7 +255,7 @@ public class HostNodeConnector extends Thread {
             e.giveup();
             System.out.println("Error update directory mapper.");
         } else {
-            if(e.commit()){
+            if (e.commit()) {
                 System.out.println("Update directory mapper ok.");
             } else {
                 System.out.println("Error commit directory mapper.");
@@ -201,17 +263,17 @@ public class HostNodeConnector extends Thread {
         }
     }
 
-    public HostNodeSession getNodeSession(HostSession session){
-        if(Thread.currentThread().equals(this)){
+    public HostNodeSession getNodeSession(HostSession session) {
+        if (Thread.currentThread().equals(this)) {
             throw new IllegalThreadStateException("Unable to call getNodeSession() at the connector's thread!");
         }
 
         final Object waitObj = new Object();
-        final SessionRequest request= new SessionRequest(session, waitObj);
+        final SessionRequest request = new SessionRequest(session, waitObj);
 
-        synchronized (waitObj){
+        synchronized (waitObj) {
             try {
-                synchronized (mWaitObject){
+                synchronized (mWaitObject) {
                     mSessionRequestQueue.offer(request);
                     mWaitObject.notifyAll();
                 }
@@ -223,12 +285,12 @@ public class HostNodeConnector extends Thread {
         return request.mNodeSession;
     }
 
-    private class SessionRequest{
+    private class SessionRequest {
         HostNodeSession mNodeSession = null;
-        final HostSession  mHostSession;
+        final HostSession mHostSession;
         final Object mWaitObj;
 
-        SessionRequest(HostSession session, Object waitObj){
+        SessionRequest(HostSession session, Object waitObj) {
             mHostSession = session;
             mWaitObj = waitObj;
         }

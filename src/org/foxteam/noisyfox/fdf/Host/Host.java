@@ -5,6 +5,7 @@ import org.foxteam.noisyfox.fdf.Tunables;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,6 +18,7 @@ public class Host {
 
     private final Tunables mTunables;
     private final HostDirectoryMapper mDirMapper;
+    private final HashMap<Integer, HostNodeConnector> mNodeConnectorMap = new HashMap<Integer, HostNodeConnector>();
 
     public Host(Tunables tunables) {
         mTunables = tunables;
@@ -25,8 +27,14 @@ public class Host {
 
     public void hostStart() {
         System.out.println("Starting node connector.");
-        for(HostNodeDefinition hnd : mTunables.hostNodes){
-            new HostNodeConnector(hnd, mDirMapper).start();
+        for (HostNodeDefinition hnd : mTunables.hostNodes) {
+            if (mNodeConnectorMap.containsKey(hnd.number)) {
+                throw new IllegalStateException("Unable to start more than one node connector that have the same number!");
+            } else {
+                HostNodeConnector connector = new HostNodeConnector(hnd, mDirMapper);
+                mNodeConnectorMap.put(hnd.number, connector);
+                connector.start();
+            }
         }
         System.out.println("Wait 5 seconds before start listening.");
         try {

@@ -14,7 +14,7 @@ import java.io.IOException;
 public class NodeDirectoryMapper {
     Path dirFrom, dirTo;
 
-    public NodeDirectoryMapper(String from, String to)throws IOException {
+    public NodeDirectoryMapper(String from, String to) throws IOException {
         dirFrom = Path.valueOf(from);
         dirTo = Path.valueOf(to);
     }

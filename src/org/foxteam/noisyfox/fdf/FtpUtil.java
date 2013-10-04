@@ -58,7 +58,7 @@ public class FtpUtil {
     public static Path ftpGetRealPath(Path home, Path cur, Path path) {
         int rela = path.getRelativity();
         Path rp = null;
-        switch(rela){
+        switch (rela) {
             case Path.RELA_CURR:
                 rp = cur.link(path);
                 break;
@@ -201,7 +201,7 @@ public class FtpUtil {
         return null;
     }
 
-    public static String[] loadLinesFromFile(Path path, boolean ignoreComment){
+    public static String[] loadLinesFromFile(Path path, boolean ignoreComment) {
         Vector<String> strings = new Vector<String>();
         File f = path.getFile();
         BufferedReader br;
@@ -213,13 +213,13 @@ public class FtpUtil {
         }
         String cfgLine;
         try {
-            if(ignoreComment){
-                while((cfgLine = br.readLine()) != null){
-                    if(cfgLine.isEmpty() || cfgLine.startsWith("#"))continue;
+            if (ignoreComment) {
+                while ((cfgLine = br.readLine()) != null) {
+                    if (cfgLine.isEmpty() || cfgLine.startsWith("#")) continue;
                     strings.add(cfgLine.trim());
                 }
             } else {
-                while((cfgLine = br.readLine()) != null){
+                while ((cfgLine = br.readLine()) != null) {
                     strings.add(cfgLine.trim());
                 }
             }
@@ -238,17 +238,17 @@ public class FtpUtil {
         return array;
     }
 
-    public static int getNodeNumber(String prefix, String value){
+    public static int getNodeNumber(String prefix, String value) {
         int preLen = prefix.length();
-        if(preLen >= value.length()){
+        if (preLen >= value.length()) {
             return -1;
         }
         String v = value.substring(preLen);
         int number = -1;
 
-        try{
+        try {
             number = Integer.parseInt(v);
-        }catch(NumberFormatException e){
+        } catch (NumberFormatException e) {
             e.printStackTrace();
         }
 

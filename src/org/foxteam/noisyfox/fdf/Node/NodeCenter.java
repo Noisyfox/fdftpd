@@ -29,7 +29,7 @@ public class NodeCenter {
     private String mHostCmd = "";
     private String mHostArg = "";
 
-    public NodeCenter(Vector<NodeDirectoryMapper> directoryMappers, FtpCertification cert, Tunables tunables, Socket socket){
+    public NodeCenter(Vector<NodeDirectoryMapper> directoryMappers, FtpCertification cert, Tunables tunables, Socket socket) {
         mDirectoryMappers = directoryMappers;
         mCert = cert;
         mTunables = tunables;
@@ -59,7 +59,7 @@ public class NodeCenter {
         return false;
     }
 
-    public void startNode(){
+    public void startNode() {
         //开始监听
         try {
             mOut = new PrintWriter(new OutputStreamWriter(mIncoming.getOutputStream(), mTunables.hostRemoteCharset), true);
@@ -70,27 +70,27 @@ public class NodeCenter {
         }
 
         //验证服务端身份
-        if(verifyHost()){
+        if (verifyHost()) {
             serviceLoop();
         }
 
     }
 
-    public void tryDoClean(){
-        try{
+    public void tryDoClean() {
+        try {
 
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public boolean verifyHost(){
+    public boolean verifyHost() {
         String challenge = FtpCertification.generateChallenge();
-        while(readCmdArg()){
-            if("CHAG".equals(mHostCmd)){
+        while (readCmdArg()) {
+            if ("CHAG".equals(mHostCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_CHALLENGEOK, ' ', challenge);
-            } else if ("REPO".equals(mHostCmd)){
-                if(mCert.verify(challenge, mHostArg)){
+            } else if ("REPO".equals(mHostCmd)) {
+                if (mCert.verify(challenge, mHostArg)) {
                     //OK
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_RESPONDEOK, ' ', "Greeting! Host!");
                     System.out.println("Host verify success!");
@@ -108,24 +108,44 @@ public class NodeCenter {
         return false;
     }
 
-    public void serviceLoop(){
-        while (readCmdArg()){
-            if("DMAP".equals(mHostCmd)){
+    public void serviceLoop() {
+        while (readCmdArg()) {
+            if ("DMAP".equals(mHostCmd)) {
                 handleDmap();
             } else if ("NOOP".equals(mHostCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
-            }else {
+            } else if ("PORT".equals(mHostCmd)) {
+                handlePort();
+            } else {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
         }
     }
 
-    private void handleDmap(){
+    private void handleDmap() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_DMAP, '-', "DirMaps:");
-        for(NodeDirectoryMapper ndm : mDirectoryMappers){
-             FtpUtil.ftpWriteStringRaw(mOut, " " + ndm.dirTo.getAbsolutePath());
+        for (NodeDirectoryMapper ndm : mDirectoryMappers) {
+            FtpUtil.ftpWriteStringRaw(mOut, " " + ndm.dirTo.getAbsolutePath());
         }
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_DMAP, ' ', "End");
+    }
+
+    private void handlePort() {
+        String oAddr = mIncoming.getRemoteSocketAddress().toString();
+        String hostAddr = oAddr.substring(1, oAddr.indexOf(':'));
+        int hostPort;
+        try {
+            hostPort = Integer.parseInt(mHostArg);
+        } catch (NumberFormatException e) {
+            return;
+        }
+        try {
+            Socket tempSocket = new Socket(hostAddr, hostPort);
+            NodeServant servant = new NodeServant(tempSocket);
+            servant.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }

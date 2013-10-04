@@ -11,28 +11,28 @@ public final class Pair<T1, T2> {
     private T1 value1;
     private T2 value2;
 
-    public Pair(){
+    public Pair() {
         this(null, null);
     }
 
-    public Pair(T1 v1, T2 v2){
+    public Pair(T1 v1, T2 v2) {
         value1 = v1;
         value2 = v2;
     }
 
-    public T1 getValue1(){
+    public T1 getValue1() {
         return value1;
     }
 
-    public T2 getValue2(){
+    public T2 getValue2() {
         return value2;
     }
 
-    public void setValue1(T1 v1){
+    public void setValue1(T1 v1) {
         value1 = v1;
     }
 
-    public void setValue2(T2 v2){
+    public void setValue2(T2 v2) {
         value2 = v2;
     }
 }

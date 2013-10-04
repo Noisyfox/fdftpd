@@ -96,8 +96,8 @@ public class HostServant extends Thread {
         Socket tempSocket = null;
         BufferedReader tempReaderAscii = null;
         BufferedInputStream tempReaderBinary = null;
-        PrintWriter tempWriterAscii = null;
-        BufferedOutputStream tempWriterBinary = null;
+        PrintWriter tempWriterAscii;
+        BufferedOutputStream tempWriterBinary;
         try {
             tempSocket = mSession.userPasvSocketServer.accept();
             mSession.userPasvSocketServer.close();
@@ -348,7 +348,7 @@ public class HostServant extends Thread {
 
         //尝试开启端口监听
         int bindRetry = 10;
-        int minPort = 2048;
+        int minPort = 1024;
         int maxPort = 65535;
         int selectedPort;
         ServerSocket ss;
@@ -552,7 +552,7 @@ public class HostServant extends Thread {
                 e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
         }
-        if(!isSet){
+        if (!isSet) {
             fileName = Path.valueOf(mSession.ftpArg);
         }
         //获取真实路径
