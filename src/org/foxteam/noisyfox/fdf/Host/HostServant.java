@@ -931,6 +931,7 @@ public class HostServant extends Thread {
                 if (mSession.userAnon && mTunables.hostAnonNoPassword) {
                     mSession.ftpArg = "<no password>";
                     if (handlePass()) {
+                        postLogin();
                         break;
                     } else {
                         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Login incorrect.");
