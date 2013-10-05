@@ -3,6 +3,7 @@ package org.foxteam.noisyfox.fdf;
 import org.foxteam.noisyfox.fdf.Host.HostNodeDefinition;
 
 import java.io.*;
+import java.util.HashMap;
 import java.util.Vector;
 
 /**
@@ -51,6 +52,8 @@ public class Tunables {
     public boolean hostAnonDenyEmailEnabled = false;
     public String[] hostAnonDenyEmail = {};
     public long hostAnonTransferRateMax = 1024 * 1024 * 3;
+
+    public final HashMap<String, UserDefinition> hostUserDefinition = new HashMap<String, UserDefinition>();
 
     public HostNodeDefinition[] hostNodes = {};
 
@@ -147,6 +150,30 @@ public class Tunables {
                         hostMaxClients = Integer.parseInt(value);
                     } else if ("anon_max_rate".equals(key)) {
                         hostAnonTransferRateMax = Long.parseLong(value);
+                    } else if ("user_defs".equals(key)) {
+                        Path userDefDirPath = Path.valueOf(value);
+                        File userDefDirFile = userDefDirPath.getFile();
+                        if (userDefDirFile.isDirectory()) {
+                            String[] userDefs = userDefDirFile.list(new FilenameFilter() {
+                                @Override
+                                public boolean accept(File dir, String name) {
+                                    return name.endsWith(".usr");
+                                }
+                            });
+                            for (String userDef : userDefs) {
+                                Path userDefPath = userDefDirPath.link(userDef);
+                                UserDefinition ud = new UserDefinition();
+                                try {
+                                    ud.loadFromFile(userDefPath);
+                                    hostUserDefinition.put(ud.name, ud);
+                                    System.out.println("User \"" + ud.name + "\" added!");
+                                } catch (RuntimeException e) {
+                                    System.out.println("Illegal user definition file \"" + userDefPath.getAbsolutePath() + "\", ignored.");
+                                }
+                            }
+                        } else {
+                            System.out.println("Illegal user definition directory \"" + value + "\", ignored.");
+                        }
                     } else if ("host_node_count".equals(key)) {
                         int count = Integer.parseInt(value);
                         if (count > 0) {
