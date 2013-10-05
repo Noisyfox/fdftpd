@@ -138,23 +138,18 @@ public class FtpUtil {
                 }
             } else {
                 if (!tFile.exists() || !tFile.canRead() || tFile.isFile()) return null;
-                File[] fList = tFile.listFiles();
-                if (fList == null) return null;
                 //转义
                 filter = filter.replace(".", "\\.").replace("^", "\\^").replace("$", "\\$")
                         .replace("+", "\\+").replace("{", "\\{").replace("}", "\\}").replace("[", "\\[")
                         .replace("]", "\\]").replace("|", "\\|").replace("(", "\\(").replace(")", "\\)")
                         .replace("?", ".").replace("*", ".*");
-                Pattern pattern = Pattern.compile(filter);
-                Vector<File> matchedFiles = new Vector<File>(fList.length);
-                for (File f : fList) {
-                    if (pattern.matcher(f.getName()).matches()) {
-                        matchedFiles.add(f);
+                final Pattern pattern = Pattern.compile(filter);
+                return tFile.listFiles(new FilenameFilter() {
+                    @Override
+                    public boolean accept(File dir, String name) {
+                        return pattern.matcher(name).matches();
                     }
-                }
-                File[] mf = new File[matchedFiles.size()];
-                matchedFiles.toArray(mf);
-                return mf;
+                });
             }
         } catch (Exception e) {
             e.printStackTrace();
