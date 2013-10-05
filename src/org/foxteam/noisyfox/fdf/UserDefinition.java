@@ -31,13 +31,14 @@ public class UserDefinition {
         home = Path.valueOf(userLineSplit[3]);
         //开始定义权限
         //先增加默认权限
-        permission.addPermission(false, true, false, home, '*');
-        permission.addPermission(true, true, false, home, '*');
+        permission.addPermission(false, true, false, false, home, '*');
+        permission.addPermission(true, true, false, true, home, '*');
+        permission.addPermission(true, true, false, true, home, '-');
         for (int i = 1; i < lines.length; i++) {
-            boolean isDir, canRead, canWrite;
+            boolean isDir, canRead, canWrite, canExecute;
             String[] permissionLineSplit = lines[i].split("::");
             char[] perItems = permissionLineSplit[0].toLowerCase().toCharArray();
-            if (perItems.length < 3) {
+            if (perItems.length < 4) {
                 throw new RuntimeException("Illegal permission definition: \"" + lines[i] + "\"");
             }
             if (perItems[0] == '-') {
@@ -61,12 +62,24 @@ public class UserDefinition {
             } else {
                 throw new RuntimeException("Illegal permission definition: \"" + lines[i] + "\"");
             }
+            if (perItems[3] == '-') {
+                canExecute = false;
+            } else if (perItems[3] == 'x') {
+                canExecute = true;
+            } else {
+                throw new RuntimeException("Illegal permission definition: \"" + lines[i] + "\"");
+            }
+            if (permissionLineSplit.length == 1) {//默认设置
+                if (isDir) {
+                    permission.addPermission(isDir, canRead, canWrite, canExecute, home, '-');
+                }
+            }
             Path perPath = home;
             char suffix = '*';
-            if (permissionLineSplit.length > 2) {
+            if (permissionLineSplit.length > 1) {
                 perPath = Path.valueOf(permissionLineSplit[1]);
             }
-            if (permissionLineSplit.length > 3) {
+            if (permissionLineSplit.length > 2) {
                 char c = permissionLineSplit[2].charAt(0);
                 if (c == '-' || c == '?' || c == '*') {
                     suffix = c;
@@ -74,7 +87,7 @@ public class UserDefinition {
                     throw new RuntimeException("Illegal permission definition: \"" + lines[i] + "\"");
                 }
             }
-            permission.addPermission(isDir, canRead, canWrite, perPath, suffix);
+            permission.addPermission(isDir, canRead, canWrite, canExecute, perPath, suffix);
         }
     }
 }
