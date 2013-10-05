@@ -914,6 +914,14 @@ public class HostServant extends Thread {
             mSession.userCurrentDir = mSession.userHomeDir;
             return true;
         }
+        UserDefinition userDef = mTunables.hostUserDefinition.get(mSession.user);
+        if (userDef != null && userDef.passwd.equals(mSession.ftpArg)) {
+            //加载用户配置
+            mSession.userHomeDir = userDef.home;
+            mSession.userCurrentDir = mSession.userHomeDir;
+            mSession.permission = userDef.permission;
+            return true;
+        }
 
         return false;
     }
