@@ -1,7 +1,8 @@
 package org.foxteam.noisyfox.fdf.Host;
 
-import org.foxteam.noisyfox.fdf.*;
 import org.foxteam.noisyfox.fdf.FilePermission;
+import org.foxteam.noisyfox.fdf.Path;
+import org.foxteam.noisyfox.fdf.RateRestriction;
 
 import java.io.*;
 import java.net.ServerSocket;

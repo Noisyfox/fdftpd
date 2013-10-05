@@ -1,5 +1,6 @@
 package org.foxteam.noisyfox.fdf.Host;
 
+import org.foxteam.noisyfox.fdf.FilePermission;
 import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
@@ -265,7 +266,7 @@ public class HostServant extends Thread {
         mSession.loginFails++;
         return mSession.loginFails <= mTunables.hostMaxLoginFails;
     }
-
+    /*
     private boolean checkFileAccess(Path f) {
         //验证是否为home的子目录并且目录是否可读
         /*
@@ -275,8 +276,35 @@ public class HostServant extends Thread {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             return false;
         }
-        */
+        *
         return f.isChildPath(mSession.userHomeDir) && f.getFile().canRead();
+    }
+    */
+
+    private boolean checkFileAccess(Path file, int operation) {
+        //验证是否为home的子目录
+        if (!file.isChildPath(mSession.userHomeDir)) {
+            return false;
+        }
+
+        if (mSession.userAnon) {
+            switch (operation) {
+                case FilePermission.OPERATION_FILE_CREATE: //这几个操作都是需要文件夹拥有写的权限
+                case FilePermission.OPERATION_FILE_DELETE:
+                case FilePermission.OPERATION_FILE_RENAME_FROM:
+                case FilePermission.OPERATION_FILE_RENAME_TO:
+
+                case FilePermission.OPERATION_DIRECTORY_LIST: //需要文件夹的读权限
+
+                case FilePermission.OPERATION_FILE_WRITE: //需要文件的写权限
+
+                case FilePermission.OPERATION_FILE_READ: //需要文件的读权限
+
+            }
+            return true;
+        } else {
+            return mSession.permission.checkAccess(file, operation);
+        }
     }
 
     private void handleCwd() {
@@ -295,7 +323,7 @@ public class HostServant extends Thread {
         if (!f.exists() || !f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             return;
-        } else if (!checkFileAccess(rp)) {
+        } else if (!checkFileAccess(rp, FilePermission.OPERATION_DIRECTORY_CHANGE)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
@@ -452,6 +480,10 @@ public class HostServant extends Thread {
             }
         }
         */
+        if (!checkFileAccess(dirNameStr, FilePermission.OPERATION_DIRECTORY_LIST)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
 
         //开始传输数据
         if (statCmd) {
@@ -474,7 +506,16 @@ public class HostServant extends Thread {
         if (files != null) {
             if (fullDetails) {
                 for (File f : files) {
-                    selectedWriter.println(FtpUtil.ftpFileNameFormat(f));
+                    int accessCode = 0;
+                    if (mSession.userAnon) {
+                        accessCode |= FilePermission.ACCESS_READ;
+                        if (mTunables.hostAnonUploadEnabled) {
+                            accessCode |= FilePermission.ACCESS_WRITE;
+                        }
+                    } else {
+                        accessCode = mSession.permission.getAccess(Path.valueOf(f));
+                    }
+                    selectedWriter.println(FtpUtil.ftpFileNameFormat(f, accessCode));
                     if (selectedWriter.checkError()) {
                         transferSuccess = false;
                         break;
@@ -528,7 +569,7 @@ public class HostServant extends Thread {
         if (!f.exists() || f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
             return;
-        } else if (!rp.isChildPath(mSession.userHomeDir)) {
+        } else if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_DIR_READ)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
@@ -573,9 +614,12 @@ public class HostServant extends Thread {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
                     isSet ? "Could not set file modification time." : "Could not get file modification time.");
             return;
-        } else if (!rp.isChildPath(mSession.userHomeDir)) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
-            return;
+        } else {
+            int operate = isSet ? FilePermission.OPERATION_FILE_DIR_WRITE : FilePermission.OPERATION_FILE_DIR_READ;
+            if (!checkFileAccess(rp, operate)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+                return;
+            }
         }
 
         if (isSet) {
@@ -606,7 +650,7 @@ public class HostServant extends Thread {
 
         //获取真实路径
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
-        if (!checkFileAccess(rp)) {
+        if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_READ)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
@@ -746,6 +790,12 @@ public class HostServant extends Thread {
             mSession.ftpArg = "STOU";
         }
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+        int operate = (fileOffset != 0 || isAppend) ? FilePermission.OPERATION_FILE_WRITE : FilePermission.OPERATION_FILE_CREATE;
+        if (!checkFileAccess(rp, operate)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
         File f = rp.getFile();
         {
             File nf = f;
@@ -893,6 +943,91 @@ public class HostServant extends Thread {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_OPTSOK, ' ', "Always in UTF8 mode.");
         } else {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADOPTS, ' ', "Option not understood.");
+        }
+    }
+
+    private void handleMkd() {
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+
+        if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_CREATE)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        File f = rp.getFile();
+        if (f.mkdirs()) {
+            mSession.ftpArg = mSession.ftpArg.replace("\"", "\"\"");
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MKDIROK, ' ', "\"" + mSession.ftpArg + "\" created.");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
+        }
+    }
+
+    private void handleRmd() {
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+        if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_DELETE)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        File f = rp.getFile();
+        if (f.isDirectory() && f.delete()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
+        }
+    }
+
+    private void handleDele() {
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+        if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_DELETE)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        File f = rp.getFile();
+        if (!f.isDirectory() && f.delete()) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
+        }
+    }
+
+    private void handleRnfr() {
+        mSession.userRnfrFile = null;
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+        if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_RENAME_FROM)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        File f = rp.getFile();
+        if (f.exists()) {
+            mSession.userRnfrFile = f;
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+        }
+    }
+
+    private void handleRnto() {
+        if (mSession.userRnfrFile == null) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NEEDRNFR, ' ', "RNFR required first.");
+        } else {
+            Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
+            if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_RENAME_TO)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+                return;
+            }
+
+            File f = rp.getFile();
+            File from = mSession.userRnfrFile;
+            mSession.userRnfrFile = null;
+            if (from.renameTo(f)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RENAMEOK, ' ', "Rename successful.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+            }
         }
     }
 
@@ -1094,34 +1229,15 @@ public class HostServant extends Thread {
             } else if (("MKD".equals(mSession.ftpCmd) || "XMKD".equals(mSession.ftpCmd))
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonMkdirWriteEnabled || !mSession.userAnon)) {
-                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
-                File f = rp.getFile();
-                if (f.mkdirs()) {
-                    mSession.ftpArg = mSession.ftpArg.replace("\"", "\"\"");
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MKDIROK, ' ', "\"" + mSession.ftpArg + "\" created.");
-                } else {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
-                }
+                handleMkd();
             } else if (("RMD".equals(mSession.ftpCmd) || "XRMD".equals(mSession.ftpCmd))
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
-                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
-                File f = rp.getFile();
-                if (f.isDirectory() && f.delete()) {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
-                } else {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
-                }
+                handleRmd();
             } else if ("DELE".equals(mSession.ftpCmd)
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
-                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
-                File f = rp.getFile();
-                if (!f.isDirectory() && f.delete()) {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
-                } else {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
-                }
+                handleDele();
             } else if ("REST".equals(mSession.ftpCmd)) {
                 long pos = 0;
                 try {
@@ -1134,31 +1250,11 @@ public class HostServant extends Thread {
             } else if ("RNFR".equals(mSession.ftpCmd)
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
-                mSession.userRnfrFile = null;
-                Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
-                File f = rp.getFile();
-                if (f.exists()) {
-                    mSession.userRnfrFile = f;
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
-                } else {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
-                }
+                handleRnfr();
             } else if ("RNTO".equals(mSession.ftpCmd)
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
-                if (mSession.userRnfrFile == null) {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NEEDRNFR, ' ', "RNFR required first.");
-                } else {
-                    Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.ftpArg));
-                    File f = rp.getFile();
-                    File from = mSession.userRnfrFile;
-                    mSession.userRnfrFile = null;
-                    if (from.renameTo(f)) {
-                        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RENAMEOK, ' ', "Rename successful.");
-                    } else {
-                        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
-                    }
-                }
+                handleRnto();
             } else if ("NLST".equals(mSession.ftpCmd) && mTunables.hostDirListEnabled) {
                 handleDirCommon(false, false);
             } else if ("SIZE".equals(mSession.ftpCmd)) {

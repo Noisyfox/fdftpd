@@ -73,7 +73,7 @@ public class FtpUtil {
     private static SimpleDateFormat dateFormatYear = new SimpleDateFormat("MMM dd yyyy", Locale.ENGLISH);
     private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("MMM dd hh:mm", Locale.ENGLISH);
 
-    public static String ftpFileNameFormat(File file) {
+    public static String ftpFileNameFormat(File file, int fileAccess) {
         long modifyTime = file.lastModified();
         //判断是否是6个月以内,见http://cr.yp.to/ftp/list/binls.html
         long currentTime = System.currentTimeMillis();
@@ -90,11 +90,15 @@ public class FtpUtil {
 
         if (file.isDirectory()) {
             return String.format("d%s%s%sr-xr-x 1 0      0   0 %s %s",
-                    file.canRead() ? "r" : "-", file.canWrite() ? "w" : "-", file.canExecute() ? "x" : "-",
+                    (fileAccess & FilePermission.ACCESS_READ) != 0 ? "r" : "-",
+                    (fileAccess & FilePermission.ACCESS_WRITE) != 0 ? "w" : "-",
+                    (fileAccess & FilePermission.ACCESS_EXECUTE) != 0 ? "x" : "-",
                     timeString, file.getName());
         } else {
             return String.format("-%s%s%sr-xr-x 1 0      0   %d %s %s",
-                    file.canRead() ? "r" : "-", file.canWrite() ? "w" : "-", file.canExecute() ? "x" : "-",
+                    (fileAccess & FilePermission.ACCESS_READ) != 0 ? "r" : "-",
+                    (fileAccess & FilePermission.ACCESS_WRITE) != 0 ? "w" : "-",
+                    (fileAccess & FilePermission.ACCESS_EXECUTE) != 0 ? "x" : "-",
                     file.length(), timeString, file.getName());
         }
     }
