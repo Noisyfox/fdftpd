@@ -1031,6 +1031,18 @@ public class HostServant extends Thread {
         }
     }
 
+    private void handleStat() {
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATOK, '-', "FTP server status:");
+        FtpUtil.ftpWriteStringRaw(mOut, "     Connected to " + mSession.userRemoteAddr);
+        FtpUtil.ftpWriteStringRaw(mOut, "     Logged in as " + mSession.user);
+        FtpUtil.ftpWriteStringRaw(mOut, "     TYPE: " + (mSession.isAscii ? "ASCII" : "BINARY"));
+        FtpUtil.ftpWriteStringRaw(mOut, "     Control connection is plain text");
+        FtpUtil.ftpWriteStringRaw(mOut, "     Data connections will be plain text");
+        FtpUtil.ftpWriteStringRaw(mOut, "     At session startup, client count was " + mNumClients.intValue());
+        FtpUtil.ftpWriteStringRaw(mOut, "     fdFTPd " + FtpMain.FDF_VER + " - a distributed ftp daemon");
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATOK, ' ', "End");
+    }
+
     private boolean handlePass() {
         if (mSession.ftpArg.isEmpty()) {//不允许空密码登陆
             return false;
@@ -1310,7 +1322,7 @@ public class HostServant extends Thread {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_LOGINERR, ' ', "Can't change to another user.");
                 }
             } else if ("STAT".equals(mSession.ftpCmd) && mSession.ftpArg.isEmpty()) {
-
+                handleStat();
             } else if ("STAT".equals(mSession.ftpCmd)) {
                 handleDirCommon(true, true);
             } else if ("PASS".equals(mSession.ftpCmd)) {
