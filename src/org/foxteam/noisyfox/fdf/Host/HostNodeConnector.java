@@ -2,6 +2,7 @@ package org.foxteam.noisyfox.fdf.Host;
 
 import org.foxteam.noisyfox.fdf.FtpCodes;
 import org.foxteam.noisyfox.fdf.FtpUtil;
+import org.foxteam.noisyfox.fdf.RequestStatus;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -27,8 +28,8 @@ public class HostNodeConnector extends Thread {
     protected Socket mConnecting;
     protected PrintWriter mOut;
     protected BufferedReader mIn;
-    private int mStatusCode;
-    private String mStatusMsg;
+
+    RequestStatus mNodeStatus = new RequestStatus();
 
     public HostNodeConnector(HostNodeDefinition nodeDef, HostDirectoryMapper dirMapper) {
         mHostNodeDefinition = nodeDef;
@@ -36,40 +37,7 @@ public class HostNodeConnector extends Thread {
     }
 
     private boolean readStatus() {
-        mStatusCode = 0;
-        mStatusMsg = "";
-        try {
-            mConnecting.setSoTimeout(20000);
-            String line = mIn.readLine();
-            mConnecting.setSoTimeout(0);
-            if (line != null) {
-                System.out.println("Node status:" + line);
-                int i = line.indexOf(' ');
-                int i2 = line.indexOf('-');
-                if (i == -1) i = i2;
-                else if (i2 != -1) i = Math.min(i, i2);
-
-                if (i != -1) {
-                    String code = line.substring(0, i).trim();
-                    if (!code.isEmpty()) {
-                        try {
-                            mStatusCode = Integer.parseInt(code);
-                        } catch (NumberFormatException ignored) {
-                        }
-                    }
-
-                    if (i + 1 >= line.length() - 1) {
-                        mStatusMsg = "";
-                    } else {
-                        mStatusMsg = line.substring(i + 1).trim();
-                    }
-                }
-                return true;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return FtpUtil.readStatus(mConnecting, mIn, mNodeStatus, 20000, "Node");
     }
 
     @Override
@@ -144,7 +112,7 @@ public class HostNodeConnector extends Thread {
         while (true) {
             synchronized (mWaitObject) {
                 FtpUtil.ftpWriteStringRaw(mOut, "NOOP");//发送心跳
-                if (!readStatus() || mStatusCode != FtpCodes.FTP_NOOPOK) { //挂了
+                if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.FTP_NOOPOK) { //挂了
                     break;
                 }
                 while (!mSessionRequestQueue.isEmpty()) {//处理node连接请求
@@ -202,7 +170,7 @@ public class HostNodeConnector extends Thread {
             }
             //save node session
             sessionRequest.mNodeSession = new HostNodeSession(tempSocket);
-            sessionRequest.mNodeSession.start();
+            sessionRequest.mNodeSession.prepareConnection(sessionRequest.mHostSession);
         } catch (IOException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             //clean
@@ -221,12 +189,12 @@ public class HostNodeConnector extends Thread {
 
     private boolean doVerify() {
         FtpUtil.ftpWriteStringRaw(mOut, "CHAG");
-        if (!readStatus() || mStatusCode != FtpCodes.HOST_CHALLENGEOK) {
+        if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_CHALLENGEOK) {
             System.out.println("Error require challenge.");
             return false;
         }
-        FtpUtil.ftpWriteStringRaw(mOut, "REPO " + mHostNodeDefinition.cert.respond(mStatusMsg));
-        if (!readStatus() || mStatusCode != FtpCodes.HOST_RESPONDEOK) {
+        FtpUtil.ftpWriteStringRaw(mOut, "REPO " + mHostNodeDefinition.cert.respond(mNodeStatus.mStatusMsg));
+        if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_RESPONDEOK) {
             System.out.println("Error verify challenge.");
             return false;
         }
@@ -235,18 +203,18 @@ public class HostNodeConnector extends Thread {
 
     private void updateDirectoryMapper() {
         FtpUtil.ftpWriteStringRaw(mOut, "DMAP");
-        if (!readStatus() || mStatusCode != FtpCodes.HOST_DMAP) {
+        if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_DMAP) {
             System.out.println("Error update directory mapper.");
             return;
         }
         HostDirectoryMapper.Editor e = mHostDirectoryMapper.edit(mHostNodeDefinition.number);
         boolean needCommit = false;
         while (readStatus()) {
-            if (mStatusCode == FtpCodes.HOST_DMAP && "End".equals(mStatusMsg)) {
+            if (mNodeStatus.mStatusCode == FtpCodes.HOST_DMAP && "End".equals(mNodeStatus.mStatusMsg)) {
                 needCommit = true;
                 break;
-            } else if (mStatusCode == 0) {
-                e.add(mStatusMsg);
+            } else if (mNodeStatus.mStatusCode == 0) {
+                e.add(mNodeStatus.mStatusMsg);
             } else {
                 break;
             }

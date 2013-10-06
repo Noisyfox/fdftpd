@@ -3,6 +3,7 @@ package org.foxteam.noisyfox.fdf.Host;
 import org.foxteam.noisyfox.fdf.FilePermission;
 import org.foxteam.noisyfox.fdf.Path;
 import org.foxteam.noisyfox.fdf.RateRestriction;
+import org.foxteam.noisyfox.fdf.RequestCmdArg;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -16,8 +17,7 @@ import java.net.Socket;
  * To change this template use File | Settings | File Templates.
  */
 public class HostSession extends RateRestriction {
-    protected String ftpCmd = "";
-    protected String ftpArg = "";
+    protected RequestCmdArg mFtpCmdArg = new RequestCmdArg();
 
     protected String user = "";
     protected boolean userAnon = false;

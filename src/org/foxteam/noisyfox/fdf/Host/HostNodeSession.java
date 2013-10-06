@@ -11,6 +11,7 @@ import java.net.Socket;
  * To change this template use File | Settings | File Templates.
  */
 public class HostNodeSession extends Thread {
+    private final Object mWaitObj = new Object();
     private final Socket mSocket;
     private final PrintWriter mWriter;
     private final BufferedReader mReader;
@@ -29,15 +30,29 @@ public class HostNodeSession extends Thread {
         }
     }
 
+    /**
+     * 连接准备，主机和node进行必要的信息交换，并启动session至可使用状态
+     *
+     * @param userSession
+     */
+    public void prepareConnection(HostSession userSession) {
+
+    }
+
     @Override
     public void run() {
         System.out.println("Node session created!");
-        while (true) {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        synchronized (mWaitObj) {
+            while (true) {
+                try {
+                    mWaitObj.wait();
+                } catch (InterruptedException ignored) {
+                }
+
+                mWaitObj.notifyAll();
             }
         }
     }
+
+
 }

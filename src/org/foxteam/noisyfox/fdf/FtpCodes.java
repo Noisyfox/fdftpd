@@ -87,5 +87,9 @@ public class FtpCodes {
     public static final int HOST_RESPONDEOK = 902;
     public static final int HOST_DMAP = 903;
     public static final int HOST_BADSENDCONN = 904;
+    public static final int HOST_INFOOK = 905;
+
+    public static final int NODE_OPSMSG = 906;
+    public static final int NODE_OPSOK = 907;
 
 }

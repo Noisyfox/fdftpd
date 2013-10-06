@@ -1,9 +1,6 @@
 package org.foxteam.noisyfox.fdf.Node;
 
-import org.foxteam.noisyfox.fdf.FtpCertification;
-import org.foxteam.noisyfox.fdf.FtpCodes;
-import org.foxteam.noisyfox.fdf.FtpUtil;
-import org.foxteam.noisyfox.fdf.Tunables;
+import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
 import java.net.Socket;
@@ -26,8 +23,8 @@ public class NodeCenter {
     protected final Vector<NodeDirectoryMapper> mDirectoryMappers;
     protected PrintWriter mOut;
     protected BufferedReader mIn;
-    private String mHostCmd = "";
-    private String mHostArg = "";
+
+    private RequestCmdArg mHostCmdArg = new RequestCmdArg();
 
     public NodeCenter(Vector<NodeDirectoryMapper> directoryMappers, FtpCertification cert, Tunables tunables, Socket socket) {
         mDirectoryMappers = directoryMappers;
@@ -38,25 +35,7 @@ public class NodeCenter {
 
 
     private boolean readCmdArg() {
-        mHostCmd = "";
-        mHostArg = "";
-        try {
-            String line = mIn.readLine();
-            if (line != null) {
-                System.out.println("Host command:" + line);
-                int i = line.indexOf(' ');
-                if (i != -1) {
-                    mHostCmd = line.substring(0, i).trim().toUpperCase();
-                    mHostArg = line.substring(i).trim();
-                } else {
-                    mHostCmd = line;
-                }
-                return true;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
-        return false;
+        return FtpUtil.readCmdArg(mIncoming, mIn, mHostCmdArg, 0, "Node");
     }
 
     public void startNode() {
@@ -87,10 +66,10 @@ public class NodeCenter {
     public boolean verifyHost() {
         String challenge = FtpCertification.generateChallenge();
         while (readCmdArg()) {
-            if ("CHAG".equals(mHostCmd)) {
+            if ("CHAG".equals(mHostCmdArg.mCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_CHALLENGEOK, ' ', challenge);
-            } else if ("REPO".equals(mHostCmd)) {
-                if (mCert.verify(challenge, mHostArg)) {
+            } else if ("REPO".equals(mHostCmdArg.mCmd)) {
+                if (mCert.verify(challenge, mHostCmdArg.mArg)) {
                     //OK
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_RESPONDEOK, ' ', "Greeting! Host!");
                     System.out.println("Host verify success!");
@@ -110,11 +89,11 @@ public class NodeCenter {
 
     public void serviceLoop() {
         while (readCmdArg()) {
-            if ("DMAP".equals(mHostCmd)) {
+            if ("DMAP".equals(mHostCmdArg.mCmd)) {
                 handleDmap();
-            } else if ("NOOP".equals(mHostCmd)) {
+            } else if ("NOOP".equals(mHostCmdArg.mCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
-            } else if ("PORT".equals(mHostCmd)) {
+            } else if ("PORT".equals(mHostCmdArg.mCmd)) {
                 handlePort();
             } else {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
@@ -135,7 +114,7 @@ public class NodeCenter {
         String hostAddr = oAddr.substring(1, oAddr.indexOf(':'));
         int hostPort;
         try {
-            hostPort = Integer.parseInt(mHostArg);
+            hostPort = Integer.parseInt(mHostCmdArg.mArg);
         } catch (NumberFormatException e) {
             return;
         }

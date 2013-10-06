@@ -1,6 +1,7 @@
 package org.foxteam.noisyfox.fdf;
 
 import java.io.*;
+import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
@@ -240,4 +241,70 @@ public class FtpUtil {
 
         return number;
     }
+
+    public static boolean readStatus(Socket connection, BufferedReader reader, RequestStatus status, int timeOut, String tag) {
+        status.mStatusCode = 0;
+        status.mStatusMsg = "";
+        try {
+            connection.setSoTimeout(timeOut);
+            String line = reader.readLine();
+            connection.setSoTimeout(0);
+            if (line != null) {
+                System.out.println(tag + ";Status:" + line);
+                int i = line.indexOf(' ');
+                int i2 = line.indexOf('-');
+                if (i == -1) i = i2;
+                else if (i2 != -1) i = Math.min(i, i2);
+
+                if (i != -1) {
+                    String code = line.substring(0, i).trim();
+                    if (!code.isEmpty()) {
+                        try {
+                            status.mStatusCode = Integer.parseInt(code);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+
+                    if (i + 1 >= line.length() - 1) {
+                        status.mStatusMsg = "";
+                    } else {
+                        status.mStatusMsg = line.substring(i + 1).trim();
+                    }
+                }
+                return true;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static boolean readCmdArg(Socket connection, BufferedReader reader, RequestCmdArg cmdArg, int timeOut, String tag) {
+        cmdArg.mCmd = "";
+        cmdArg.mArg = "";
+        try {
+            connection.setSoTimeout(timeOut);
+            String line = reader.readLine();
+            connection.setSoTimeout(0);
+            if (line != null) {
+                int i = line.indexOf(' ');
+                if (i != -1) {
+                    cmdArg.mCmd = line.substring(0, i).trim().toUpperCase();
+                    cmdArg.mArg = line.substring(i).trim();
+                } else {
+                    cmdArg.mCmd = line;
+                }
+                if ("PASS".equals(cmdArg.mCmd)) {
+                    System.out.println(tag + ";Command:PASS <hidden>");
+                } else {
+                    System.out.println(tag + ";Command:" + line);
+                }
+                return true;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        return false;
+    }
+
 }
