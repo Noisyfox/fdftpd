@@ -51,7 +51,7 @@ public class Path {
     }
 
     public Path() {
-        this(Path.class.getClassLoader().getResource("/").getPath());
+        this("/");
     }
 
     public Path(String path) {
@@ -265,10 +265,7 @@ public class Path {
 
     @Override
     public boolean equals(Object obj) {
-        if (Path.class.isInstance(obj)) {
-            return toString().equals(obj.toString());
-        }
-        return false;
+        return Path.class.isInstance(obj) && toString().equals(obj.toString());
     }
 
     public static Path valueOf(String path) {

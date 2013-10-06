@@ -16,10 +16,6 @@ public class FtpMain {
     public static final String CONFIG_DEFAULT_PATH = "fdftpd.conf";
 
     public static void main(String args[]) {
-
-        Path p = Path.valueOf("C:\\");
-        Path p2 = p.link("/");
-
         Tunables tunables = new Tunables();
 
         tunables.loadFromFile(CONFIG_DEFAULT_PATH);

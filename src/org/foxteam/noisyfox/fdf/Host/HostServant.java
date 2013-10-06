@@ -158,8 +158,8 @@ public class HostServant extends Thread {
         Socket tempSocket = null;
         BufferedReader tempReaderAscii = null;
         BufferedInputStream tempReaderBinary = null;
-        PrintWriter tempWriterAscii = null;
-        BufferedOutputStream tempWriterBinary = null;
+        PrintWriter tempWriterAscii;
+        BufferedOutputStream tempWriterBinary;
         try {
             long maxRate = mSession.userAnon ? mTunables.hostAnonTransferRateMax : mTunables.hostTransferRateMax;
             tempSocket = new Socket(mSession.userPortSocketAddr, mSession.userPortSocketPort);
@@ -287,24 +287,8 @@ public class HostServant extends Thread {
             return false;
         }
 
-        if (mSession.userAnon) {
-            switch (operation) {
-                case FilePermission.OPERATION_FILE_CREATE: //这几个操作都是需要文件夹拥有写的权限
-                case FilePermission.OPERATION_FILE_DELETE:
-                case FilePermission.OPERATION_FILE_RENAME_FROM:
-                case FilePermission.OPERATION_FILE_RENAME_TO:
-
-                case FilePermission.OPERATION_DIRECTORY_LIST: //需要文件夹的读权限
-
-                case FilePermission.OPERATION_FILE_WRITE: //需要文件的写权限
-
-                case FilePermission.OPERATION_FILE_READ: //需要文件的读权限
-
-            }
-            return true;
-        } else {
-            return mSession.permission.checkAccess(file, operation);
-        }
+        //匿名用户权限已经在主代码中控制过了，此处就直接略过
+        return mSession.userAnon || mSession.permission.checkAccess(file, operation);
     }
 
     private void handleCwd() {
