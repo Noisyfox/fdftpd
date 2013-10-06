@@ -164,21 +164,8 @@ public class FtpUtil {
     public static String hashString(String data, String algorithm) {
         if (data == null)
             return null;
-        try {
-            MessageDigest mdInst = MessageDigest.getInstance(algorithm);
-            byte btInput[] = data.getBytes();
-            mdInst.update(btInput);
-            byte md[] = mdInst.digest();
-            StringBuilder sb = new StringBuilder(64);
-            for (byte b : md) {
-                sb.append(String.format("%02X", b));
-            }
 
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return hashBytes(data.getBytes(), algorithm);
     }
 
     public static String hashBytes(byte[] data, String algorithm) {
