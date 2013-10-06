@@ -169,8 +169,10 @@ public class HostNodeConnector extends Thread {
                 return;
             }
             //save node session
-            sessionRequest.mNodeSession = new HostNodeSession(tempSocket);
-            sessionRequest.mNodeSession.prepareConnection(sessionRequest.mHostSession);
+            HostNodeSession session = new HostNodeSession(tempSocket);
+            if (session.prepareConnection(sessionRequest.mHostSession)) {
+                sessionRequest.mNodeSession = session;
+            }
         } catch (IOException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             //clean
