@@ -1055,6 +1055,8 @@ public class HostServant extends Thread {
             mSession.userHomeDir = userDef.home;
             mSession.userCurrentDir = mSession.userHomeDir;
             mSession.permission = userDef.permission;
+            mSession.userCmdsAllowed = userDef.cmdsAllowed;
+            mSession.userCmdsDenied = userDef.cmdsDenied;
             return true;
         }
 

@@ -12,6 +12,9 @@ public class UserDefinition {
     public String passwd = "";
     public int uid = -1;
     public Path home = null;
+    public String[] cmdsAllowed = {};
+    public String[] cmdsDenied = {};
+
     public final FilePermission permission = new FilePermission();
 
     public void loadFromFile(Path filePath) throws RuntimeException {
@@ -22,13 +25,27 @@ public class UserDefinition {
         //第一行是用户定义
         String user = lines[0];
         String[] userLineSplit = user.split("::");
-        if (userLineSplit.length < 4) {
+        if (userLineSplit.length < 6) {
             throw new RuntimeException("Illegal user definition: \"" + user + "\"");
         }
+        userLineSplit[0] = userLineSplit[0].trim();
+        userLineSplit[1] = userLineSplit[1].trim();
+        userLineSplit[2] = userLineSplit[2].trim();
+        userLineSplit[3] = userLineSplit[3].trim();
+        userLineSplit[4] = userLineSplit[4].trim();
+        userLineSplit[5] = userLineSplit[5].trim();
+
         name = userLineSplit[0];
         passwd = userLineSplit[1];
         uid = Integer.parseInt(userLineSplit[2]);
         home = Path.valueOf(userLineSplit[3]);
+        if (!userLineSplit[4].isEmpty()) {
+            cmdsAllowed = userLineSplit[4].split(",");
+        }
+        if (!userLineSplit[5].isEmpty()) {
+            cmdsDenied = userLineSplit[5].split(",");
+        }
+
         //开始定义权限
         //先增加默认权限
         permission.addPermission(false, true, false, false, home, '*');
