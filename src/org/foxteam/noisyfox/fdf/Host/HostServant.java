@@ -31,6 +31,7 @@ public class HostServant extends Thread {
     protected BufferedReader mIn;
 
     protected HostSession mSession;
+    protected HostNodeController mNodeController;
 
     protected HostServant(Host host, Socket socket) {
         mHost = host;
@@ -218,6 +219,8 @@ public class HostServant extends Thread {
         cleanPort();
         ioCloseConnection();
 
+        mNodeController.killAll();
+
     }
 
     private boolean readCmdArg() {
@@ -244,20 +247,6 @@ public class HostServant extends Thread {
         mSession.loginFails++;
         return mSession.loginFails <= mTunables.hostMaxLoginFails;
     }
-    /*
-    private boolean checkFileAccess(Path f) {
-        //验证是否为home的子目录并且目录是否可读
-        /*
-        try {
-            return f.getCanonicalPath().startsWith(mSession.userHomeDir) && f.canRead();
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            return false;
-        }
-        *
-        return f.isChildPath(mSession.userHomeDir) && f.getFile().canRead();
-    }
-    */
 
     private boolean checkFileAccess(Path file, int operation) {
         //验证是否为home的子目录
@@ -273,14 +262,6 @@ public class HostServant extends Thread {
         //获取真实路径
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
         File f = rp.getFile();
-        /*
-        if (rp.isEmpty()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
-            return;
-        }
-
-        File f = new File(rp);
-        */
 
         if (!f.exists() || !f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
@@ -422,26 +403,6 @@ public class HostServant extends Thread {
 
         boolean useControl = false;
 
-        /*
-        if (!filterStr.isEmpty()) {
-            String rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, filterStr);
-            if (!checkFileAccess(rp)) {
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
-                return;
-            }
-
-            //检查是否是目录
-            File tf = new File(rp);
-            if (tf.isDirectory()) {
-                isDir = true;
-                dirNameStr = rp;
-            } else {
-                //获取文件所在目录
-                isDir = false;
-                dirNameStr = tf.getParent();
-            }
-        }
-        */
         if (!checkFileAccess(dirNameStr, FilePermission.OPERATION_DIRECTORY_LIST)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
@@ -520,13 +481,6 @@ public class HostServant extends Thread {
         //获取真实路径
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
 
-        /*
-        if (rp.isEmpty()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
-            return;
-        }
-        */
-
         File f = rp.getFile();
         if (!f.exists() || f.isDirectory()) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
@@ -562,14 +516,6 @@ public class HostServant extends Thread {
         }
         //获取真实路径
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, fileName);
-
-        /*
-        if (rp.isEmpty()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
-                    isSet ? "Could not set file modification time." : "Could not get file modification time.");
-            return;
-        }
-        */
 
         File f = rp.getFile();
         if (!f.exists() || f.isDirectory()) {
@@ -858,34 +804,6 @@ public class HostServant extends Thread {
         }
     }
 
-    //SITE is not supported on Windows
-    /*
-    private void handleSite(){
-        //get sub command
-        String subCommand = "";
-        String subArgument = "";
-        int firstSpacePos = mSession.mFtpCmdArg.mArg.indexOf(" ");
-        if(firstSpacePos != -1){
-            subCommand = mSession.mFtpCmdArg.mArg.substring(0, firstSpacePos).toUpperCase();
-            subArgument = mSession.mFtpCmdArg.mArg.substring(firstSpacePos).trim();
-        }
-        if("CHMOD".equals(subCommand) && mTunables.hostWriteEnabled
-                && mTunables.hostChmodEnabled){
-
-        } else if ("UMASK".equals(subCommand)){
-
-        } else if ("HELP".equals(subCommand)){
-            if(mTunables.hostWriteEnabled && mTunables.hostChmodEnabled){
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SITEHELP, ' ', "CHMOD UMASK HELP");
-            }else{
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SITEHELP, ' ', "UMASK HELP");
-            }
-        } else {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown SITE command.");
-        }
-    }
-    */
-
     private void handleFeatures() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FEAT, '-', "Features:");
         FtpUtil.ftpWriteStringRaw(mOut, " MDTM");
@@ -1112,6 +1030,8 @@ public class HostServant extends Thread {
             mSession = new HostSession();
             String oAddr = mIncoming.getRemoteSocketAddress().toString();
             mSession.userRemoteAddr = oAddr.substring(1, oAddr.indexOf(':'));
+            mSession.userNodeSession = new HostNodeSession[mTunables.hostNodes.length];
+            mNodeController = new HostNodeController(this);
 
             parseUsernamePassword();
 

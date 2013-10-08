@@ -2,6 +2,7 @@ package org.foxteam.noisyfox.fdf.Node;
 
 import org.foxteam.noisyfox.fdf.FtpCodes;
 import org.foxteam.noisyfox.fdf.FtpUtil;
+import org.foxteam.noisyfox.fdf.Path;
 import org.foxteam.noisyfox.fdf.RequestCmdArg;
 
 import java.io.*;
@@ -21,10 +22,12 @@ public class NodeServant extends Thread {
     private final Socket mSocket;
     private final PrintWriter mWriter;
     private final BufferedReader mReader;
+    private final NodeDirectoryMapper mDirectoryMapper;
 
     private RequestCmdArg mHostCmdArg = new RequestCmdArg();
 
-    public NodeServant(Socket socket) throws IOException {
+    public NodeServant(NodeDirectoryMapper dirMapper, Socket socket) throws IOException {
+        mDirectoryMapper = dirMapper;
         mSocket = socket;
         try {
             mReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -52,15 +55,32 @@ public class NodeServant extends Thread {
     private void servantLoop() {
         while (readCmdArg()) {
             if ("NOOP".equals(mHostCmdArg.mCmd)) {
-                FtpUtil.ftpWriteStringCommon(mWriter, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
             } else if ("UNAME".equals(mHostCmdArg.mCmd)) {
                 mSession.user = mHostCmdArg.mArg;
-                FtpUtil.ftpWriteStringCommon(mWriter, FtpCodes.HOST_INFOOK, ' ', "Remote user updated:" + mSession.user);
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK, ' ', "Remote user updated:", mSession.user);
             } else if ("RADDR".equals(mHostCmdArg.mCmd)) {
                 mSession.userRemoteAddr = mHostCmdArg.mArg;
-                FtpUtil.ftpWriteStringCommon(mWriter, FtpCodes.HOST_INFOOK, ' ', "Remote address updated:" + mSession.userRemoteAddr);
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK, ' ', "Remote address updated:", mSession.userRemoteAddr);
+            } else if ("CWD".equals(mHostCmdArg.mCmd)) {
+                handleCwd();
             } else {
-                FtpUtil.ftpWriteStringCommon(mWriter, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
+            }
+        }
+    }
+
+    private void handleCwd() {
+        Path rp = mDirectoryMapper.map(Path.valueOf(mHostCmdArg.mArg));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
+        } else {
+            File f = rp.getFile();
+            if (!f.exists() || !f.isDirectory()) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
+            } else {
+                mSession.userCurrentDir = rp;
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
             }
         }
     }

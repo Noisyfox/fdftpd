@@ -23,38 +23,35 @@ public class FtpUtil {
         StringBuilder sb = new StringBuilder(50);
         sb.append(status);
         sb.append(sep);
-        String s = str.replace('\n', '\0');
-        sb.append(s.replace("\377", "\377\377"));
-        out.println(sb.toString());
-        System.out.println("Result:" + sb.toString());
+        sb.append(str.replace('\n', '\0').replace("\377", "\377\377"));
+        String s = sb.toString();
+        out.println(s);
         out.flush();
+
+        System.out.println("Result:" + s);
     }
 
     public static void ftpWriteStringRaw(PrintWriter out, String str) {
+        str = str.replace('\n', '\0').replace("\377", "\377\377");
         out.println(str);
-        System.out.println("Result:" + str);
         out.flush();
+
+        System.out.println("Result:" + str);
     }
 
-    /*
-    public static String ftpGetRealPath(String home, String cur, String path) {
-
-        if (path.startsWith("~") || path.startsWith("/") || path.startsWith("\\")) {
-            path = path.substring(1);
-            return ftpGetRealPath(home, "", path);
+    public static void ftpWriteNodeString(PrintWriter out, int nodeStatus, Object... ftpMsg) {
+        StringBuilder sb = new StringBuilder(50);
+        sb.append(nodeStatus);
+        sb.append(' ');
+        for (Object s1 : ftpMsg) {
+            sb.append(s1.toString().replace('\n', '\0').replace("\377", "\377\377"));
         }
+        String s = sb.toString();
+        out.println(s);
+        out.flush();
 
-        File f = new File(home);
-        f = new File(f, cur);
-        f = new File(f, path);
-        try {
-            return f.getCanonicalPath();
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
-        return "";
+        System.out.println("Result:" + s);
     }
-     */
 
     public static Path ftpGetRealPath(Path home, Path cur, Path path) {
         int rela = path.getRelativity();
@@ -242,35 +239,40 @@ public class FtpUtil {
         return number;
     }
 
-    public static boolean readStatus(Socket connection, BufferedReader reader, RequestStatus status, int timeOut, String tag) {
+    private static void parseStatus(String statusStr, RequestStatus status) {
         status.mStatusCode = 0;
         status.mStatusMsg = "";
+
+        int i = statusStr.indexOf(' ');
+        int i2 = statusStr.indexOf('-');
+        if (i == -1) i = i2;
+        else if (i2 != -1) i = Math.min(i, i2);
+
+        if (i != -1) {
+            String code = statusStr.substring(0, i).trim();
+            if (!code.isEmpty()) {
+                try {
+                    status.mStatusCode = Integer.parseInt(code);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            if (i + 1 >= statusStr.length() - 1) {
+                status.mStatusMsg = "";
+            } else {
+                status.mStatusMsg = statusStr.substring(i + 1).trim();
+            }
+        }
+    }
+
+    public static boolean readStatus(Socket connection, BufferedReader reader, RequestStatus status, int timeOut, String tag) {
         try {
             connection.setSoTimeout(timeOut);
             String line = reader.readLine();
             connection.setSoTimeout(0);
             if (line != null) {
                 System.out.println(tag + ";Status:" + line);
-                int i = line.indexOf(' ');
-                int i2 = line.indexOf('-');
-                if (i == -1) i = i2;
-                else if (i2 != -1) i = Math.min(i, i2);
-
-                if (i != -1) {
-                    String code = line.substring(0, i).trim();
-                    if (!code.isEmpty()) {
-                        try {
-                            status.mStatusCode = Integer.parseInt(code);
-                        } catch (NumberFormatException ignored) {
-                        }
-                    }
-
-                    if (i + 1 >= line.length() - 1) {
-                        status.mStatusMsg = "";
-                    } else {
-                        status.mStatusMsg = line.substring(i + 1).trim();
-                    }
-                }
+                parseStatus(line, status);
                 return true;
             }
         } catch (IOException e) {
@@ -303,6 +305,34 @@ public class FtpUtil {
             }
         } catch (IOException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        return false;
+    }
+
+    public static boolean readNodeRespond(Socket connection, BufferedReader reader, NodeRespond responde, int timeOut) {
+        responde.mRespondCode = 0;
+
+        try {
+            connection.setSoTimeout(timeOut);
+            String line = reader.readLine();
+            connection.setSoTimeout(0);
+            if (line != null) {
+                System.out.println("Node respond;" + line);
+                int i = line.indexOf(' ');
+                if (i != -1) {
+                    String code = line.substring(0, i).trim();
+                    if (!code.isEmpty()) {
+                        try {
+                            responde.mRespondCode = Integer.parseInt(code);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    parseStatus(line.substring(i), responde.mStatus);
+                }
+                return true;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         return false;
     }

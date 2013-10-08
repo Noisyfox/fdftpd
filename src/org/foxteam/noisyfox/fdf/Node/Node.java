@@ -7,7 +7,6 @@ import org.foxteam.noisyfox.fdf.Tunables;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Vector;
 
 /**
  * Created with IntelliJ IDEA.
@@ -20,7 +19,7 @@ public class Node {
 
     private final Tunables mTunables;
 
-    private final Vector<NodeDirectoryMapper> mDirectoryMappers = new Vector<NodeDirectoryMapper>();
+    private final NodeDirectoryMapper mDirectoryMapper = new NodeDirectoryMapper();
 
     public Node(Tunables tunables) {
         mTunables = tunables;
@@ -42,12 +41,7 @@ public class Node {
         //load database/prepare filesystem
         //perpare dir map
         for (Pair<String, String> def : mTunables.nodeDirectoryMap) {
-            try {
-                NodeDirectoryMapper ndm = new NodeDirectoryMapper(def.getValue1(), def.getValue2());
-                mDirectoryMappers.add(ndm);
-            } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
+            mDirectoryMapper.addPathMap(def.getValue1(), def.getValue2());
         }
 
         //waiting for host to connect
@@ -56,7 +50,7 @@ public class Node {
             ServerSocket s = new ServerSocket(mTunables.nodeControlPort);
             while (true) {
                 Socket incoming = s.accept();
-                NodeCenter center = new NodeCenter(mDirectoryMappers, cert, mTunables, incoming);
+                NodeCenter center = new NodeCenter(mDirectoryMapper, cert, mTunables, incoming);
                 System.out.println("Node session start!");
                 try {
                     center.startNode();

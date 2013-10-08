@@ -4,8 +4,8 @@ import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.LinkedList;
 import java.util.Random;
-import java.util.Vector;
 
 /**
  * Created with IntelliJ IDEA.
@@ -20,14 +20,14 @@ public class NodeCenter {
     protected final FtpCertification mCert;
     protected final Tunables mTunables;
     protected final Socket mIncoming;
-    protected final Vector<NodeDirectoryMapper> mDirectoryMappers;
+    protected final NodeDirectoryMapper mDirectoryMapper;
     protected PrintWriter mOut;
     protected BufferedReader mIn;
 
     private RequestCmdArg mHostCmdArg = new RequestCmdArg();
 
-    public NodeCenter(Vector<NodeDirectoryMapper> directoryMappers, FtpCertification cert, Tunables tunables, Socket socket) {
-        mDirectoryMappers = directoryMappers;
+    public NodeCenter(NodeDirectoryMapper directoryMapper, FtpCertification cert, Tunables tunables, Socket socket) {
+        mDirectoryMapper = directoryMapper;
         mCert = cert;
         mTunables = tunables;
         mIncoming = socket;
@@ -103,8 +103,9 @@ public class NodeCenter {
 
     private void handleDmap() {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_DMAP, '-', "DirMaps:");
-        for (NodeDirectoryMapper ndm : mDirectoryMappers) {
-            FtpUtil.ftpWriteStringRaw(mOut, " " + ndm.dirTo.getAbsolutePath());
+        LinkedList<Pair<Path, Path>> pathPairs = mDirectoryMapper.getAllPathPairs();
+        for (Pair<Path, Path> pp : pathPairs) {
+            FtpUtil.ftpWriteStringRaw(mOut, " " + pp.getValue1().getAbsolutePath());
         }
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_DMAP, ' ', "End");
     }
@@ -120,7 +121,7 @@ public class NodeCenter {
         }
         try {
             Socket tempSocket = new Socket(hostAddr, hostPort);
-            NodeServant servant = new NodeServant(tempSocket);
+            NodeServant servant = new NodeServant(mDirectoryMapper, tempSocket);
             servant.start();
         } catch (IOException e) {
             e.printStackTrace();

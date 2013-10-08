@@ -2,7 +2,8 @@ package org.foxteam.noisyfox.fdf.Host;
 
 import org.foxteam.noisyfox.fdf.FtpCodes;
 import org.foxteam.noisyfox.fdf.FtpUtil;
-import org.foxteam.noisyfox.fdf.RequestStatus;
+import org.foxteam.noisyfox.fdf.NodeRespond;
+import org.foxteam.noisyfox.fdf.Path;
 
 import java.io.*;
 import java.net.Socket;
@@ -19,8 +20,13 @@ public class HostNodeSession extends Thread {
     private final Socket mSocket;
     private final PrintWriter mWriter;
     private final BufferedReader mReader;
+    private final NodeRespond mNodeRespond = new NodeRespond();
+    private static final long CALL_TIMEOUT = 100 * 1000;
 
-    RequestStatus mNodeStatus = new RequestStatus();
+    private HostSession mUserSession;
+    private long mCmdCallTimeStamp = 0L;
+    private boolean mIsAlive = false;
+    private boolean mIsKilled = false;
 
     public HostNodeSession(Socket socket) throws IOException {
         mSocket = socket;
@@ -37,7 +43,13 @@ public class HostNodeSession extends Thread {
     }
 
     private boolean readStatus(boolean longWait) {
-        return FtpUtil.readStatus(mSocket, mReader, mNodeStatus, longWait ? 0 : 10000, "Node");
+        return FtpUtil.readNodeRespond(mSocket, mReader, mNodeRespond, longWait ? 0 : 10000);
+    }
+
+    private boolean readAndCheckStatus(boolean longWait, int nodeRespond, int nodeStatus) {
+        return readStatus(longWait)
+                && (nodeRespond == FtpCodes.ANYCODE || mNodeRespond.mRespondCode == nodeRespond)
+                && (nodeStatus == FtpCodes.ANYCODE || mNodeRespond.mStatus.mStatusCode == nodeStatus);
     }
 
     /**
@@ -46,16 +58,17 @@ public class HostNodeSession extends Thread {
      * @param userSession
      */
     public boolean prepareConnection(HostSession userSession) {
+        mUserSession = userSession;
         //告知登录用户名
         FtpUtil.ftpWriteStringRaw(mWriter, "UNAME " + userSession.user);
-        if (!readStatus(false) || mNodeStatus.mStatusCode != FtpCodes.HOST_INFOOK) {
-            System.out.println("Error exchange information.");
+        if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
+            System.out.println("Error exchanging information.");
             return false;
         }
         //告知客户端地址
         FtpUtil.ftpWriteStringRaw(mWriter, "RADDR " + userSession.userRemoteAddr);
-        if (!readStatus(false) || mNodeStatus.mStatusCode != FtpCodes.HOST_INFOOK) {
-            System.out.println("Error exchange information.");
+        if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
+            System.out.println("Error exchanging information.");
             return false;
         }
 
@@ -68,9 +81,17 @@ public class HostNodeSession extends Thread {
     public void run() {
         System.out.println("Node session created!");
         synchronized (mWaitObj) {//这个线程用来发送心跳包
-            while (true) {
+            mIsAlive = true;
+            mCmdCallTimeStamp = System.currentTimeMillis();
+            while (mIsAlive && !mIsKilled) {
                 FtpUtil.ftpWriteStringRaw(mWriter, "NOOP");//发送心跳
-                if (!readStatus(false) || mNodeStatus.mStatusCode != FtpCodes.FTP_NOOPOK) { //挂了
+                if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_NOOPOK)) { //挂了
+                    break;
+                }
+                // 检测该session是否空闲太久
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - mCmdCallTimeStamp > CALL_TIMEOUT) {//太久
+                    kill();
                     break;
                 }
                 try {
@@ -79,6 +100,53 @@ public class HostNodeSession extends Thread {
                 } catch (InterruptedException ignored) {
                 }
             }
+            clean();
+        }
+    }
+
+    private void clean() {
+        try {
+            mSocket.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    public void kill() {
+        synchronized (mWaitObj) {
+            if (!mIsAlive) return;
+            int tryCount = 0;
+            FtpUtil.ftpWriteStringRaw(mWriter, "QUIT");
+
+            while (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_GOODBYE)) {
+                if (tryCount < 4) {
+                    System.out.println("Error killing node session. Try again.");
+                    tryCount++;
+                    FtpUtil.ftpWriteStringRaw(mWriter, "QUIT");
+                } else {
+                    System.out.println("Error killing node session. Give up.");
+                    break;
+                }
+            }
+            mIsKilled = true;
+            mIsAlive = false;
+        }
+    }
+
+    public boolean isSessionAlive() {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+            return mIsAlive && !mIsKilled;
+        }
+    }
+
+    public void handleCwd(Path path) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+            FtpUtil.ftpWriteStringRaw(mWriter, "CWD " + path.getAbsolutePath());
+            if (readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_CWDOK)) {
+                mUserSession.userCurrentDir = path;
+            }
+            FtpUtil.ftpWriteStringCommon(mWriter, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
         }
     }
 

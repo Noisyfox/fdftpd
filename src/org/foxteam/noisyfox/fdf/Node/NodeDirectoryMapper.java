@@ -1,8 +1,10 @@
 package org.foxteam.noisyfox.fdf.Node;
 
+import org.foxteam.noisyfox.fdf.Pair;
 import org.foxteam.noisyfox.fdf.Path;
 
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedList;
 
 /**
  * Created with IntelliJ IDEA.
@@ -12,10 +14,69 @@ import java.io.IOException;
  * To change this template use File | Settings | File Templates.
  */
 public class NodeDirectoryMapper {
-    Path dirFrom, dirTo;
+    private final LinkedList<Pair<Path, Path>> mPathPairs = new LinkedList<Pair<Path, Path>>();
+    private final PathNode mRootNode = new PathNode();
 
-    public NodeDirectoryMapper(String from, String to) throws IOException {
-        dirFrom = Path.valueOf(from);
-        dirTo = Path.valueOf(to);
+    public void addPathMap(String from, String to) {
+        Path pFrom = Path.valueOf(from);
+        Path pTo = Path.valueOf(to);
+        if (!pFrom.isFullPath() || !pTo.isFullPath()
+                || pFrom.getRelativity() != Path.RELA_ROOT
+                || pTo.getRelativity() != Path.RELA_ROOT) {
+            System.out.printf("Illegal map path:\"" + from + "\"->\"" + to + "\"");
+            return;
+        }
+        Pair<Path, Path> pathPair = new Pair<Path, Path>(pFrom, pTo);
+        mPathPairs.add(pathPair);
+
+        PathNode node = mRootNode;
+        String[] levels = pFrom.toArray();
+        for (String s : levels) {
+            PathNode _tmpNode = node.nextLevel.get(s);
+            if (_tmpNode == null) {
+                _tmpNode = new PathNode();
+                _tmpNode.dirName = s;
+                node.nextLevel.put(s, _tmpNode);
+            }
+            node = _tmpNode;
+        }
+        node.dummyPath = pFrom;
+        node.mappedPath = pTo;
+    }
+
+    public LinkedList<Pair<Path, Path>> getAllPathPairs() {
+        return mPathPairs;
+    }
+
+    public Path map(Path dummyPath) {
+        String[] pathLevels = dummyPath.toArray();
+        PathNode node = mRootNode;
+        Path rp = null;
+        Path dp = null;
+        for (String s : pathLevels) {
+            PathNode _tmpNode = node.nextLevel.get(s);
+            if (_tmpNode != null) {
+                node = _tmpNode;
+                if (node.mappedPath != null) {
+                    dp = node.dummyPath;
+                    rp = node.mappedPath;
+                }
+            } else {
+                break;
+            }
+        }
+
+        if (rp == null) {
+            return null;
+        } else {
+            return rp.link(dummyPath.getRelativePath(dp));
+        }
+    }
+
+    private class PathNode {
+        String dirName;
+        Path mappedPath = null;
+        Path dummyPath = null;
+        HashMap<String, PathNode> nextLevel = new HashMap<String, PathNode>();
     }
 }

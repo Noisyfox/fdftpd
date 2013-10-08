@@ -37,16 +37,20 @@ public class HostDirectoryMapper {
     public int map(Path path) {
         String[] pathLevels = path.toArray();
         PathNode node = mRootNode;
+        int number = -1;
         for (String s : pathLevels) {
             PathNode _tmpNode = node.nextLevel.get(s);
             if (_tmpNode != null) {
                 node = _tmpNode;
+                if (node.nodeNumber != -1) {
+                    number = node.nodeNumber;
+                }
             } else {
                 break;
             }
         }
 
-        return node.nodeNumber;
+        return number;
     }
 
     private class PathNode {
@@ -57,7 +61,7 @@ public class HostDirectoryMapper {
 
     public class Editor {
         private final int mNode;
-        private boolean isCommited = false;
+        private boolean isCommitted = false;
         private ArrayList<String> mPaths = new ArrayList<String>();
 
         private Editor(int node) {
@@ -66,14 +70,14 @@ public class HostDirectoryMapper {
 
         public synchronized boolean commit() {
             synchronized (syncObj) {
-                if (isCommited) {
+                if (isCommitted) {
                     throw new IllegalStateException("Editor already committed or given up!");
                 }
-                isCommited = true;
+                isCommitted = true;
                 Path[] paths = new Path[mPaths.size()];
                 for (int i = 0; i < paths.length; i++) {
                     paths[i] = Path.valueOf(mPaths.get(i));
-                    if (!paths[i].isFullPath() || !paths[i].isChildPath(Path.valueOf("/"))) {
+                    if (!paths[i].isFullPath() || paths[i].getRelativity() != Path.RELA_ROOT) {
                         return false;
                     }
                 }
@@ -97,14 +101,14 @@ public class HostDirectoryMapper {
         }
 
         public synchronized void giveup() {
-            if (isCommited) {
+            if (isCommitted) {
                 throw new IllegalStateException("Editor already committed or given up!");
             }
-            isCommited = true;
+            isCommitted = true;
         }
 
         public synchronized void add(String dummyPath) {
-            if (isCommited) {
+            if (isCommitted) {
                 throw new IllegalStateException("Editor already committed or given up!");
             }
             mPaths.add(dummyPath);

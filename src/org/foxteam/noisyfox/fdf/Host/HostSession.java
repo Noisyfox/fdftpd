@@ -52,4 +52,7 @@ public class HostSession extends RateRestriction {
 
     protected File userRnfrFile = null;
 
+    //noed session
+    protected HostNodeSession[] userNodeSession;
+
 }

@@ -8,6 +8,8 @@ package org.foxteam.noisyfox.fdf;
  * To change this template use File | Settings | File Templates.
  */
 public class FtpCodes {
+    public static final int ANYCODE = -1;
+
     public static final int FTP_DATACONN = 150;
 
     public static final int FTP_NOOPOK = 200;
