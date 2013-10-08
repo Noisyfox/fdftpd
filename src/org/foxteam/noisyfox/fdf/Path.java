@@ -39,7 +39,7 @@ public class Path {
     public static final int RELA_CURR = 3;//以当前目录起始
 
     private final String[] mLevels;//储存路径的层次结构，第一个为 "/""~""."三者之一，分别表示根目录，home及当前目录
-    private final File mFile;
+    private File mFile = null;
     private int startCount = 0;//记录该路径开头有多少个连续的"../"
     private int endCount = 0;//记录该路径结尾处有多少个连续的非"../"
 
@@ -47,7 +47,6 @@ public class Path {
         mLevels = levels;
         startCount = start;
         endCount = end;
-        mFile = new File(getAbsolutePath());
     }
 
     public Path() {
@@ -62,7 +61,6 @@ public class Path {
         String[] levels = path.split("/");
         if (levels == null || levels.length == 0) {//空路径，即为根目录
             mLevels = new String[]{"/"};
-            mFile = new File("/");
             return;
         }
         //合并输入路径中的".."和"."
@@ -90,7 +88,6 @@ public class Path {
         }
         if (point < 0) {
             mLevels = new String[]{"/"};
-            mFile = new File("/");
             return;
         }
 
@@ -109,8 +106,6 @@ public class Path {
             }
         }
         System.arraycopy(levels, 0, mLevels, 1, mLevels.length - 1);
-
-        mFile = new File(getAbsolutePath());
     }
 
     public Path link(String path) {
@@ -118,27 +113,6 @@ public class Path {
     }
 
     public Path link(Path path) {
-        /*
-        int firstNoneEmptyCount = 0;
-        for(int i = mLevels.length - 1; i > 0; i--){
-            if("..".equals(mLevels[i]))break;
-            else firstNoneEmptyCount++;
-
-            if(firstNoneEmptyCount >= path.mLevels.length || ! "..".equals(path.mLevels[firstNoneEmptyCount])){
-                break;
-            }
-        }
-        int newLen = mLevels.length + path.mLevels.length - firstNoneEmptyCount * 2 + 1;
-        String[] levels = new String[newLen];
-        for(int i = 0; i <= mLevels.length - firstNoneEmptyCount; i++){
-            levels[i] = mLevels[i];
-        }
-        for(int i = firstNoneEmptyCount; i < path.mLevels.length; i++){
-            int index = mLevels.length - firstNoneEmptyCount * 2 + i + 1;
-            levels[index] = path.mLevels[i];
-        }
-        */
-
         int maxReduce = Math.min(endCount, path.startCount);
         String[] levels = new String[mLevels.length + path.mLevels.length - 1 - maxReduce * 2];
         System.arraycopy(mLevels, 0, levels, 0, mLevels.length - maxReduce);
@@ -236,6 +210,9 @@ public class Path {
     }
 
     public File getFile() {
+        if (mFile == null) {
+            mFile = new File(getAbsolutePath());
+        }
         return mFile;
     }
 
