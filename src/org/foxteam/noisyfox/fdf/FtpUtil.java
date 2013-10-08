@@ -257,11 +257,7 @@ public class FtpUtil {
                 }
             }
 
-            if (i + 1 >= statusStr.length() - 1) {
-                status.mStatusMsg = "";
-            } else {
-                status.mStatusMsg = statusStr.substring(i + 1).trim();
-            }
+            status.mStatusMsg = statusStr.substring(i + 1).trim();
         }
     }
 
