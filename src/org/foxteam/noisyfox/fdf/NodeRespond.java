@@ -9,5 +9,5 @@ package org.foxteam.noisyfox.fdf;
  */
 public class NodeRespond {
     public int mRespondCode;
-    public RequestStatus mStatus;
+    public RequestStatus mStatus = new RequestStatus();
 }

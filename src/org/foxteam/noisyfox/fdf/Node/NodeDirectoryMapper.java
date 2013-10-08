@@ -17,20 +17,20 @@ public class NodeDirectoryMapper {
     private final LinkedList<Pair<Path, Path>> mPathPairs = new LinkedList<Pair<Path, Path>>();
     private final PathNode mRootNode = new PathNode();
 
-    public void addPathMap(String from, String to) {
-        Path pFrom = Path.valueOf(from);
-        Path pTo = Path.valueOf(to);
-        if (!pFrom.isFullPath() || !pTo.isFullPath()
-                || pFrom.getRelativity() != Path.RELA_ROOT
-                || pTo.getRelativity() != Path.RELA_ROOT) {
-            System.out.printf("Illegal map path:\"" + from + "\"->\"" + to + "\"");
+    public void addPathMap(String nodePath, String dummyPath) {
+        Path pNode = Path.valueOf(nodePath);
+        Path pDummy = Path.valueOf(dummyPath);
+        if (!pNode.isFullPath() || !pDummy.isFullPath()
+                || pNode.getRelativity() != Path.RELA_ROOT
+                || pDummy.getRelativity() != Path.RELA_ROOT) {
+            System.out.printf("Illegal map path:\"" + nodePath + "\"->\"" + dummyPath + "\"");
             return;
         }
-        Pair<Path, Path> pathPair = new Pair<Path, Path>(pFrom, pTo);
+        Pair<Path, Path> pathPair = new Pair<Path, Path>(pNode, pDummy);
         mPathPairs.add(pathPair);
 
         PathNode node = mRootNode;
-        String[] levels = pFrom.toArray();
+        String[] levels = pDummy.toArray();
         for (String s : levels) {
             PathNode _tmpNode = node.nextLevel.get(s);
             if (_tmpNode == null) {
@@ -40,8 +40,8 @@ public class NodeDirectoryMapper {
             }
             node = _tmpNode;
         }
-        node.dummyPath = pFrom;
-        node.mappedPath = pTo;
+        node.dummyPath = pDummy;
+        node.mappedPath = pNode;
     }
 
     public LinkedList<Pair<Path, Path>> getAllPathPairs() {

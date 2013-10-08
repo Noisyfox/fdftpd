@@ -170,7 +170,7 @@ public class HostNodeConnector extends Thread {
             }
             //save node session
             HostNodeSession session = new HostNodeSession(tempSocket);
-            if (session.prepareConnection(sessionRequest.mHostSession)) {
+            if (session.prepareConnection(sessionRequest.mHostServant)) {
                 sessionRequest.mNodeSession = session;
             }
         } catch (IOException e) {
@@ -233,13 +233,13 @@ public class HostNodeConnector extends Thread {
         }
     }
 
-    public HostNodeSession getNodeSession(HostSession session) {
+    public HostNodeSession getNodeSession(HostServant servant) {
         if (Thread.currentThread().equals(this)) {
             throw new IllegalThreadStateException("Unable to call getNodeSession() at the connector's thread!");
         }
 
         final Object waitObj = new Object();
-        final SessionRequest request = new SessionRequest(session, waitObj);
+        final SessionRequest request = new SessionRequest(servant, waitObj);
 
         synchronized (waitObj) {
             try {
@@ -257,11 +257,11 @@ public class HostNodeConnector extends Thread {
 
     private class SessionRequest {
         HostNodeSession mNodeSession = null;
-        final HostSession mHostSession;
+        final HostServant mHostServant;
         final Object mWaitObj;
 
-        SessionRequest(HostSession session, Object waitObj) {
-            mHostSession = session;
+        SessionRequest(HostServant servant, Object waitObj) {
+            mHostServant = servant;
             mWaitObj = waitObj;
         }
     }

@@ -9,5 +9,5 @@ package org.foxteam.noisyfox.fdf;
  */
 public class RequestStatus {
     public int mStatusCode;
-    public String mStatusMsg;
+    public String mStatusMsg = "";
 }

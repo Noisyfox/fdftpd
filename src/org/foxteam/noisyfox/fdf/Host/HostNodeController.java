@@ -35,7 +35,7 @@ public class HostNodeController {
         HostNodeSession[] sessions = mHostSession.userNodeSession;
 
         if (sessions[mSelectedNode] == null || !sessions[mSelectedNode].isSessionAlive()) {
-            sessions[mSelectedNode] = mHost.getHostNodeConnector(mSelectedNode).getNodeSession(mHostSession);
+            sessions[mSelectedNode] = mHost.getHostNodeConnector(mSelectedNode).getNodeSession(mHostServant);
         }
     }
 

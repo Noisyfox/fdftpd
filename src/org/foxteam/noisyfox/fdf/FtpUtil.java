@@ -309,8 +309,8 @@ public class FtpUtil {
         return false;
     }
 
-    public static boolean readNodeRespond(Socket connection, BufferedReader reader, NodeRespond responde, int timeOut) {
-        responde.mRespondCode = 0;
+    public static boolean readNodeRespond(Socket connection, BufferedReader reader, NodeRespond respond, int timeOut) {
+        respond.mRespondCode = 0;
 
         try {
             connection.setSoTimeout(timeOut);
@@ -323,11 +323,11 @@ public class FtpUtil {
                     String code = line.substring(0, i).trim();
                     if (!code.isEmpty()) {
                         try {
-                            responde.mRespondCode = Integer.parseInt(code);
+                            respond.mRespondCode = Integer.parseInt(code);
                         } catch (NumberFormatException ignored) {
                         }
                     }
-                    parseStatus(line.substring(i), responde.mStatus);
+                    parseStatus(line.substring(i + 1), respond.mStatus);
                 }
                 return true;
             }

@@ -261,19 +261,33 @@ public class HostServant extends Thread {
     private void handleCwd() {
         //获取真实路径
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
-        File f = rp.getFile();
-
-        if (!f.exists() || !f.isDirectory()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
-            return;
-        } else if (!checkFileAccess(rp, FilePermission.OPERATION_DIRECTORY_CHANGE)) {
+        //先检测权限
+        if (!checkFileAccess(rp, FilePermission.OPERATION_DIRECTORY_CHANGE)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
+        //然后判断目标目录位置
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            File f = rp.getFile();
 
-        mSession.userCurrentDir = rp;
+            if (!f.exists() || !f.isDirectory()) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
+                return;
+            }
 
-        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
+            mSession.userCurrentDir = rp;
+
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
+        } else {
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleCwd(rp);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
+            }
+        }
     }
 
     private void cleanPasv() {

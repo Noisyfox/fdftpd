@@ -23,7 +23,7 @@ public class HostNodeSession extends Thread {
     private final NodeRespond mNodeRespond = new NodeRespond();
     private static final long CALL_TIMEOUT = 100 * 1000;
 
-    private HostSession mUserSession;
+    private HostServant mHostServant;
     private long mCmdCallTimeStamp = 0L;
     private boolean mIsAlive = false;
     private boolean mIsKilled = false;
@@ -55,18 +55,18 @@ public class HostNodeSession extends Thread {
     /**
      * 连接准备，主机和node进行必要的信息交换，并启动session至可使用状态
      *
-     * @param userSession
+     * @param hostServant
      */
-    public boolean prepareConnection(HostSession userSession) {
-        mUserSession = userSession;
+    public boolean prepareConnection(HostServant hostServant) {
+        mHostServant = hostServant;
         //告知登录用户名
-        FtpUtil.ftpWriteStringRaw(mWriter, "UNAME " + userSession.user);
+        FtpUtil.ftpWriteStringRaw(mWriter, "UNAME " + mHostServant.mSession.user);
         if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
             System.out.println("Error exchanging information.");
             return false;
         }
         //告知客户端地址
-        FtpUtil.ftpWriteStringRaw(mWriter, "RADDR " + userSession.userRemoteAddr);
+        FtpUtil.ftpWriteStringRaw(mWriter, "RADDR " + mHostServant.mSession.userRemoteAddr);
         if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
             System.out.println("Error exchanging information.");
             return false;
@@ -144,9 +144,9 @@ public class HostNodeSession extends Thread {
             mCmdCallTimeStamp = System.currentTimeMillis();
             FtpUtil.ftpWriteStringRaw(mWriter, "CWD " + path.getAbsolutePath());
             if (readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_CWDOK)) {
-                mUserSession.userCurrentDir = path;
+                mHostServant.mSession.userCurrentDir = path;
             }
-            FtpUtil.ftpWriteStringCommon(mWriter, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
         }
     }
 

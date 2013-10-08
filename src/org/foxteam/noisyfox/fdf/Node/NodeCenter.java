@@ -105,7 +105,7 @@ public class NodeCenter {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_DMAP, '-', "DirMaps:");
         LinkedList<Pair<Path, Path>> pathPairs = mDirectoryMapper.getAllPathPairs();
         for (Pair<Path, Path> pp : pathPairs) {
-            FtpUtil.ftpWriteStringRaw(mOut, " " + pp.getValue1().getAbsolutePath());
+            FtpUtil.ftpWriteStringRaw(mOut, " " + pp.getValue2().getAbsolutePath());
         }
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_DMAP, ' ', "End");
     }
