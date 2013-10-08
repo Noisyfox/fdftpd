@@ -64,6 +64,8 @@ public class NodeServant extends Thread {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK, ' ', "Remote address updated:", mSession.userRemoteAddr);
             } else if ("CWD".equals(mHostCmdArg.mCmd)) {
                 handleCwd();
+            } else if ("SIZE".equals(mHostCmdArg.mCmd)) {
+                handleSize();
             } else {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
@@ -82,6 +84,20 @@ public class NodeServant extends Thread {
                 mSession.userCurrentDir = rp;
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
             }
+        }
+    }
+
+    private void handleSize() {
+        Path rp = mDirectoryMapper.map(Path.valueOf(mHostCmdArg.mArg));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
+        } else {
+            File f = rp.getFile();
+            if (!f.exists() || f.isDirectory()) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
+                return;
+            }
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
         }
     }
 

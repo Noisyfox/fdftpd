@@ -494,17 +494,28 @@ public class HostServant extends Thread {
     private void handleSize() {
         //获取真实路径
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
-
-        File f = rp.getFile();
-        if (!f.exists() || f.isDirectory()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
-            return;
-        } else if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_DIR_READ)) {
+        if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_DIR_READ)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            File f = rp.getFile();
+            if (!f.exists() || f.isDirectory()) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
+                return;
+            }
 
-        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
+        } else {
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleSize(rp);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
+            }
+        }
     }
 
     private static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
