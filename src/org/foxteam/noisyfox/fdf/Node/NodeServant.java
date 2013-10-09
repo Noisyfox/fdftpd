@@ -120,8 +120,7 @@ public class NodeServant extends Thread {
             mSession.userPasvSocketServer.close();
             mSession.userPasvSocketServer = null;
             //检查是否是来自当前客户端的连接
-            String oAddr = tempSocket.getRemoteSocketAddress().toString();
-            String clientAddr = oAddr.substring(1, oAddr.indexOf(':'));
+            String clientAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
             if (!mSession.userRemoteAddr.equals(clientAddr)) {
                 mMidwayStatusCode = FtpCodes.FTP_BADSENDCONN;
                 mMidwayStatusMsg = new Object[]{' ', "Security: Bad IP connecting."};

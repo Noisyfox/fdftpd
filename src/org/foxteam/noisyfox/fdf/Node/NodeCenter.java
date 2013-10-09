@@ -111,8 +111,7 @@ public class NodeCenter {
     }
 
     private void handlePort() {
-        String oAddr = mIncoming.getRemoteSocketAddress().toString();
-        String hostAddr = oAddr.substring(1, oAddr.indexOf(':'));
+        String hostAddr = FtpUtil.getSocketRemoteAddress(mIncoming);
         int hostPort;
         try {
             hostPort = Integer.parseInt(mHostCmdArg.mArg);

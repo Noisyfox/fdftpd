@@ -333,7 +333,7 @@ public class FtpUtil {
         return false;
     }
 
-    public static ServerSocket openRandomPort(){
+    public static ServerSocket openRandomPort() {
         //尝试开启端口监听
         int bindRetry = 10;
         int minPort = 1024;
@@ -352,6 +352,11 @@ public class FtpUtil {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static String getSocketRemoteAddress(Socket socket) {
+        String oAddr = socket.getRemoteSocketAddress().toString();
+        return oAddr.substring(1, oAddr.indexOf(':'));
     }
 
 }

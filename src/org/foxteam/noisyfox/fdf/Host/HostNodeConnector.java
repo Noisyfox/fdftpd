@@ -160,8 +160,7 @@ public class HostNodeConnector extends Thread {
         try {
             tempSocket = ss.accept();
             //检查是否是来自指定node的连接
-            String oAddr = tempSocket.getRemoteSocketAddress().toString();
-            String nodeAddr = oAddr.substring(1, oAddr.indexOf(':'));
+            String nodeAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
             if (!mHostNodeDefinition.adderss.equals(nodeAddr)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_BADSENDCONN, ' ', "Security: Bad IP connecting.");
                 try {
