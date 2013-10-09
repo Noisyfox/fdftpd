@@ -304,27 +304,14 @@ public class NodeServant extends Thread {
         cleanPort();
 
         //尝试开启端口监听
-        int bindRetry = 10;
-        int minPort = 1024;
-        int maxPort = 65535;
-        int selectedPort;
-        ServerSocket ss;
-        while (true) {
-            bindRetry--;
-            if (bindRetry <= 0) {
-                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ',
-                        "Enter Passive Mode Failed.");
-                return;
-            }
-            selectedPort = minPort + FtpUtil.generator.nextInt(maxPort - minPort) + 1;//随机端口
-            //尝试打开端口
-            try {
-                ss = new ServerSocket(selectedPort);
-                break;
-            } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
+        ServerSocket ss = FtpUtil.openRandomPort();
+        if (ss == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ',
+                    "Enter Passive Mode Failed.");
+            return;
         }
+        int selectedPort = ss.getLocalPort();
+
         String address = mSocket.getLocalAddress().toString().replace("/", "").replace(".", ",");
         FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_PASVOK, ' ',
                 "Entering Passive Mode (", address, ",", (selectedPort >> 8), ",", (selectedPort & 0xFF), ").");

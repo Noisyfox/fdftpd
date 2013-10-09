@@ -32,6 +32,7 @@ public class HostSession extends RateRestriction {
 
     protected Path userHomeDir = Path.valueOf("C:\\");
     protected Path userCurrentDir = userHomeDir;
+    protected int userCurrentDirNode = -1;
 
     protected String userRemoteAddr = "";
     protected String userPortSocketAddr = "";

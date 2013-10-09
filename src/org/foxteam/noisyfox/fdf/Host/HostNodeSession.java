@@ -21,6 +21,7 @@ public class HostNodeSession extends Thread {
     private final PrintWriter mWriter;
     private final BufferedReader mReader;
     private final NodeRespond mNodeRespond = new NodeRespond();
+    private final HostNodeConnector mConnector;
     private static final long CALL_TIMEOUT = 100 * 1000;
 
     private HostServant mHostServant;
@@ -28,7 +29,8 @@ public class HostNodeSession extends Thread {
     private boolean mIsAlive = false;
     private boolean mIsKilled = false;
 
-    public HostNodeSession(Socket socket) throws IOException {
+    public HostNodeSession(HostNodeConnector connector, Socket socket) throws IOException {
+        mConnector = connector;
         mSocket = socket;
         try {
             mReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -155,6 +157,7 @@ public class HostNodeSession extends Thread {
 
             FtpUtil.ftpWriteStringRaw(mWriter, "CWD " + path.getAbsolutePath());
             if (readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_CWDOK)) {
+                mHostServant.mSession.userCurrentDirNode = mConnector.mHostNodeDefinition.number;
                 mHostServant.mSession.userCurrentDir = path;
             }
             if (mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {

@@ -274,6 +274,7 @@ public class HostServant extends Thread {
             }
 
             mSession.userCurrentDir = rp;
+            mSession.userCurrentDirNode = -1;
 
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_CWDOK, ' ', "Directory successfully changed.");
         } else {
@@ -314,7 +315,8 @@ public class HostServant extends Thread {
     }
 
     private boolean checkDataTransferOk() {
-        if (!isPasvActivate() && !isPortActivate()) {
+        if (!isPasvActivate() && !isPortActivate()
+                && mSession.userTransformActivatedNode == -1) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Use PORT or PASV first.");
             return false;
         }
@@ -333,31 +335,18 @@ public class HostServant extends Thread {
         cleanPort();
 
         //判断当前用户所在目录位置
-        int pathNode = mHost.getDirMapper().map(mSession.userCurrentDir);
+        int pathNode = mSession.userCurrentDirNode;
 
         if (pathNode == -1) {
             //尝试开启端口监听
-            int bindRetry = 10;
-            int minPort = 1024;
-            int maxPort = 65535;
-            int selectedPort;
-            ServerSocket ss;
-            while (true) {
-                bindRetry--;
-                if (bindRetry <= 0) {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ',
-                            "Enter Passive Mode Failed.");
-                    return;
-                }
-                selectedPort = minPort + FtpUtil.generator.nextInt(maxPort - minPort) + 1;//随机端口
-                //尝试打开端口
-                try {
-                    ss = new ServerSocket(selectedPort);
-                    break;
-                } catch (IOException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                }
+            ServerSocket ss = FtpUtil.openRandomPort();
+            if (ss == null) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ',
+                        "Enter Passive Mode Failed.");
+                return;
             }
+            int selectedPort = ss.getLocalPort();
+
             String address = mIncoming.getLocalAddress().toString().replace("/", "").replace(".", ",");
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PASVOK, ' ', "Entering Passive Mode (" + address + ","
                     + (selectedPort >> 8) + "," + (selectedPort & 0xFF) + ").");
@@ -380,7 +369,7 @@ public class HostServant extends Thread {
         cleanPort();
 
         //判断当前用户所在目录位置
-        int pathNode = mHost.getDirMapper().map(mSession.userCurrentDir);
+        int pathNode = mSession.userCurrentDirNode;
 
         if (pathNode == -1) {
             String[] values = mSession.mFtpCmdArg.mArg.split(",");
@@ -428,7 +417,7 @@ public class HostServant extends Thread {
             return;
         }
 
-        Path dirNameStr = mSession.userCurrentDir; //默认为当前路径
+        Path dirNamePath = mSession.userCurrentDir; //默认为当前路径
 
         String optionStr = "";
         String filterStr;
@@ -447,10 +436,11 @@ public class HostServant extends Thread {
 
         boolean useControl = false;
 
-        if (!checkFileAccess(dirNameStr, FilePermission.OPERATION_DIRECTORY_LIST)) {
+        if (!checkFileAccess(dirNamePath, FilePermission.OPERATION_DIRECTORY_LIST)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
+
 
         //开始传输数据
         if (statCmd) {
@@ -469,7 +459,7 @@ public class HostServant extends Thread {
 
         boolean transferSuccess = true;
         //开始列举目录
-        File[] files = FtpUtil.ftpListFileFilter(dirNameStr, filterStr);
+        File[] files = FtpUtil.ftpListFileFilter(dirNamePath, filterStr);
         if (files != null) {
             if (fullDetails) {
                 for (File f : files) {

@@ -21,7 +21,7 @@ import java.util.Queue;
 public class HostNodeConnector extends Thread {
     private final Object mWaitObject = new Object();
     private final Host mHost;
-    private final HostNodeDefinition mHostNodeDefinition;
+    protected final HostNodeDefinition mHostNodeDefinition;
     private final HostDirectoryMapper mHostDirectoryMapper;
     private final Queue<SessionRequest> mSessionRequestQueue = new LinkedList<SessionRequest>();
     protected Socket mConnecting;
@@ -171,7 +171,7 @@ public class HostNodeConnector extends Thread {
                 return;
             }
             //save node session
-            HostNodeSession session = new HostNodeSession(tempSocket);
+            HostNodeSession session = new HostNodeSession(this, tempSocket);
             if (session.prepareConnection(sessionRequest.mHostServant)) {
                 sessionRequest.mNodeSession = session;
             }

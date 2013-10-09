@@ -1,6 +1,7 @@
 package org.foxteam.noisyfox.fdf;
 
 import java.io.*;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -330,6 +331,27 @@ public class FtpUtil {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public static ServerSocket openRandomPort(){
+        //尝试开启端口监听
+        int bindRetry = 10;
+        int minPort = 1024;
+        int maxPort = 65535;
+        int selectedPort;
+        while (true) {
+            bindRetry--;
+            if (bindRetry <= 0) {
+                return null;
+            }
+            selectedPort = minPort + FtpUtil.generator.nextInt(maxPort - minPort) + 1;//随机端口
+            //尝试打开端口
+            try {
+                return new ServerSocket(selectedPort);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }
