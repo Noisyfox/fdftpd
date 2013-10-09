@@ -39,6 +39,8 @@ public class HostSession extends RateRestriction {
 
     protected ServerSocket userPasvSocketServer = null;
 
+    protected int userTransformActivatedNode = -1;
+
     //数据传输流
     protected boolean userDataTransferAborReceived = false;
     protected Socket userDataTransferSocket = null;

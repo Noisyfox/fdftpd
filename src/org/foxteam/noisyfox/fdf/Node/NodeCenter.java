@@ -5,7 +5,6 @@ import org.foxteam.noisyfox.fdf.*;
 import java.io.*;
 import java.net.Socket;
 import java.util.LinkedList;
-import java.util.Random;
 
 /**
  * Created with IntelliJ IDEA.
@@ -15,8 +14,6 @@ import java.util.Random;
  * To change this template use File | Settings | File Templates.
  */
 public class NodeCenter {
-    private final static Random generator = new Random();//随机数
-
     protected final FtpCertification mCert;
     protected final Tunables mTunables;
     protected final Socket mIncoming;
@@ -95,6 +92,9 @@ public class NodeCenter {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOOPOK, ' ', "NOOP ok.");
             } else if ("PORT".equals(mHostCmdArg.mCmd)) {
                 handlePort();
+            } else if ("CONF".equals(mHostCmdArg.mCmd)) {
+                mTunables.parseSetting(mHostCmdArg.mArg, true);
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_CONFOK, ' ', "Config updated.");
             } else {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
@@ -121,7 +121,7 @@ public class NodeCenter {
         }
         try {
             Socket tempSocket = new Socket(hostAddr, hostPort);
-            NodeServant servant = new NodeServant(mDirectoryMapper, tempSocket);
+            NodeServant servant = new NodeServant(this, tempSocket);
             servant.start();
         } catch (IOException e) {
             e.printStackTrace();

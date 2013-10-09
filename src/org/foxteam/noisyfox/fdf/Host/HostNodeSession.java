@@ -65,6 +65,14 @@ public class HostNodeSession extends Thread {
             System.out.println("Error exchanging information.");
             return false;
         }
+        //告知是否是匿名用户
+        if (mHostServant.mSession.userAnon) {
+            FtpUtil.ftpWriteStringRaw(mWriter, "ANON");
+            if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
+                System.out.println("Error exchanging information.");
+                return false;
+            }
+        }
         //告知客户端地址
         FtpUtil.ftpWriteStringRaw(mWriter, "RADDR " + mHostServant.mSession.userRemoteAddr);
         if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
@@ -102,6 +110,7 @@ public class HostNodeSession extends Thread {
             }
             clean();
         }
+        System.out.println("Node session died!");
     }
 
     private void clean() {
@@ -135,6 +144,7 @@ public class HostNodeSession extends Thread {
     public boolean isSessionAlive() {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
+
             return mIsAlive && !mIsKilled;
         }
     }
@@ -142,6 +152,7 @@ public class HostNodeSession extends Thread {
     public void handleCwd(Path path) {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
+
             FtpUtil.ftpWriteStringRaw(mWriter, "CWD " + path.getAbsolutePath());
             if (readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_CWDOK)) {
                 mHostServant.mSession.userCurrentDir = path;
@@ -157,9 +168,36 @@ public class HostNodeSession extends Thread {
     public void handleSize(Path path) {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
+
             FtpUtil.ftpWriteStringRaw(mWriter, "SIZE " + path.getAbsolutePath());
             if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file size.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
+        }
+    }
+
+    public void handlePasv() {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "PASV");
+            if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_BADCMD, ' ', "Enter Passive Mode Failed.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
+        }
+    }
+
+    public void handlePort(String portArg) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "PORT " + portArg);
+            if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_BADCMD, ' ', "Enter Passive Mode Failed.");
             } else {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
             }

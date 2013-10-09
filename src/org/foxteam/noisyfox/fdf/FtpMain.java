@@ -19,10 +19,9 @@ public class FtpMain {
         Tunables tunables = new Tunables();
 
         tunables.loadFromFile(CONFIG_DEFAULT_PATH);
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
+        for (String arg : args) {
             if (arg.startsWith("-")) {//设置
-
+                tunables.parseSetting(arg.substring(1), false);
             } else {//配置文件
                 tunables.loadFromFile(arg);
             }

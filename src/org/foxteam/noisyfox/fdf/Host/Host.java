@@ -31,7 +31,7 @@ public class Host {
             if (mNodeConnectorMap.containsKey(hnd.number)) {
                 throw new IllegalStateException("Unable to start more than one node connector that have the same number!");
             } else {
-                HostNodeConnector connector = new HostNodeConnector(hnd, mDirMapper);
+                HostNodeConnector connector = new HostNodeConnector(hnd, this);
                 mNodeConnectorMap.put(hnd.number, connector);
                 connector.start();
             }

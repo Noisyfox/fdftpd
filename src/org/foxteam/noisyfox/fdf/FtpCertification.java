@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Random;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,7 +16,6 @@ public final class FtpCertification {
 
     private final String certContext;
     private final static String algorithm = "SHA";
-    private final static Random generator = new Random(System.currentTimeMillis());//随机数
 
     public FtpCertification(String certFile) throws IOException {
         this(new File(certFile));
@@ -50,7 +48,7 @@ public final class FtpCertification {
 
     public static String generateChallenge() {
         byte[] challengeByte = new byte[32];//256位
-        generator.nextBytes(challengeByte);
+        FtpUtil.generator.nextBytes(challengeByte);
         StringBuilder sb = new StringBuilder(64);
         for (byte b : challengeByte) {
             sb.append(String.format("%02X", b));

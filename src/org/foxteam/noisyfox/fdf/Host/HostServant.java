@@ -9,7 +9,6 @@ import java.net.Socket;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -21,8 +20,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class HostServant extends Thread {
     private static volatile AtomicInteger mNumClients = new AtomicInteger(0);
-
-    private final static Random generator = new Random();//随机数
 
     protected final Host mHost;
     protected final Tunables mTunables;
@@ -291,6 +288,7 @@ public class HostServant extends Thread {
     }
 
     private void cleanPasv() {
+        mSession.userTransformActivatedNode = -1;
         if (mSession.userPasvSocketServer != null) {
             try {
                 mSession.userPasvSocketServer.close();
@@ -302,6 +300,7 @@ public class HostServant extends Thread {
     }
 
     private void cleanPort() {
+        mSession.userTransformActivatedNode = -1;
         mSession.userPortSocketAddr = "";
         mSession.userPortSocketPort = 0;
     }
@@ -333,64 +332,95 @@ public class HostServant extends Thread {
         cleanPasv();
         cleanPort();
 
-        //尝试开启端口监听
-        int bindRetry = 10;
-        int minPort = 1024;
-        int maxPort = 65535;
-        int selectedPort;
-        ServerSocket ss;
-        while (true) {
-            bindRetry--;
-            if (bindRetry <= 0) {
-                return;
+        //判断当前用户所在目录位置
+        int pathNode = mHost.getDirMapper().map(mSession.userCurrentDir);
+
+        if (pathNode == -1) {
+            //尝试开启端口监听
+            int bindRetry = 10;
+            int minPort = 1024;
+            int maxPort = 65535;
+            int selectedPort;
+            ServerSocket ss;
+            while (true) {
+                bindRetry--;
+                if (bindRetry <= 0) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ',
+                            "Enter Passive Mode Failed.");
+                    return;
+                }
+                selectedPort = minPort + FtpUtil.generator.nextInt(maxPort - minPort) + 1;//随机端口
+                //尝试打开端口
+                try {
+                    ss = new ServerSocket(selectedPort);
+                    break;
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
             }
-            selectedPort = minPort + generator.nextInt(maxPort - minPort) + 1;//随机端口
-            //尝试打开端口
+            String address = mIncoming.getLocalAddress().toString().replace("/", "").replace(".", ",");
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PASVOK, ' ', "Entering Passive Mode (" + address + ","
+                    + (selectedPort >> 8) + "," + (selectedPort & 0xFF) + ").");
+            //储存pasv监听器
+            mSession.userPasvSocketServer = ss;
+        } else {
             try {
-                ss = new ServerSocket(selectedPort);
-                break;
-            } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handlePasv();
+                mSession.userTransformActivatedNode = pathNode;
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             }
         }
-        String address = mIncoming.getLocalAddress().toString().replace("/", "").replace(".", ",");
-        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PASVOK, ' ', "Entering Passive Mode (" + address + ","
-                + (selectedPort >> 8) + "," + (selectedPort & 0xFF) + ").");
-        //储存pasv监听器
-        mSession.userPasvSocketServer = ss;
     }
 
     private void handlePort() {
         cleanPasv();
         cleanPort();
-        String[] values = mSession.mFtpCmdArg.mArg.split(",");
-        if (values.length != 6) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
-            return;
-        }
-        int sockPort;
-        try {
-            sockPort = Integer.valueOf(values[4]) << 8 | Integer.valueOf(values[5]);
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
-            return;
-        }
-        String sockAddr = String.format("%s.%s.%s.%s", values);
-        System.out.println(sockAddr + ":" + sockPort);
-        /* SECURITY:
-        * 1) Reject requests not connecting to the control socket IP
-        * 2) Reject connects to privileged ports
-        */
-        if (!sockAddr.equals(mSession.userRemoteAddr) || sockPort < FtpMain.IPPORT_RESERVED) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
-            return;
-        }
 
-        mSession.userPortSocketAddr = sockAddr;
-        mSession.userPortSocketPort = sockPort;
+        //判断当前用户所在目录位置
+        int pathNode = mHost.getDirMapper().map(mSession.userCurrentDir);
 
-        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PORTOK, ' ', "PORT command successful. Consider using PASV.");
+        if (pathNode == -1) {
+            String[] values = mSession.mFtpCmdArg.mArg.split(",");
+            if (values.length != 6) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
+                return;
+            }
+            int sockPort;
+            try {
+                sockPort = Integer.valueOf(values[4]) << 8 | Integer.valueOf(values[5]);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
+                return;
+            }
+            String sockAddr = String.format("%s.%s.%s.%s", values);
+            System.out.println(sockAddr + ":" + sockPort);
+            /* SECURITY:
+            * 1) Reject requests not connecting to the control socket IP
+            * 2) Reject connects to privileged ports
+            */
+            if (!sockAddr.equals(mSession.userRemoteAddr) || sockPort < FtpMain.IPPORT_RESERVED) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
+                return;
+            }
+
+            mSession.userPortSocketAddr = sockAddr;
+            mSession.userPortSocketPort = sockPort;
+
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_PORTOK, ' ', "PORT command successful. Consider using PASV.");
+        } else {
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handlePort(mSession.mFtpCmdArg.mArg);
+                mSession.userTransformActivatedNode = pathNode;
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
+            }
+        }
     }
 
     private void handleDirCommon(boolean fullDetails, boolean statCmd) {

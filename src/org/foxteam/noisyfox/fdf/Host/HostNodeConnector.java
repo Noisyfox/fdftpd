@@ -3,13 +3,13 @@ package org.foxteam.noisyfox.fdf.Host;
 import org.foxteam.noisyfox.fdf.FtpCodes;
 import org.foxteam.noisyfox.fdf.FtpUtil;
 import org.foxteam.noisyfox.fdf.RequestStatus;
+import org.foxteam.noisyfox.fdf.Tunables;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.Random;
 
 /**
  * Created with IntelliJ IDEA.
@@ -19,9 +19,8 @@ import java.util.Random;
  * To change this template use File | Settings | File Templates.
  */
 public class HostNodeConnector extends Thread {
-    private final static Random generator = new Random();//随机数
-
     private final Object mWaitObject = new Object();
+    private final Host mHost;
     private final HostNodeDefinition mHostNodeDefinition;
     private final HostDirectoryMapper mHostDirectoryMapper;
     private final Queue<SessionRequest> mSessionRequestQueue = new LinkedList<SessionRequest>();
@@ -31,9 +30,10 @@ public class HostNodeConnector extends Thread {
 
     RequestStatus mNodeStatus = new RequestStatus();
 
-    public HostNodeConnector(HostNodeDefinition nodeDef, HostDirectoryMapper dirMapper) {
+    public HostNodeConnector(HostNodeDefinition nodeDef, Host host) {
+        mHost = host;
         mHostNodeDefinition = nodeDef;
-        mHostDirectoryMapper = dirMapper;
+        mHostDirectoryMapper = host.getDirMapper();
     }
 
     private boolean readStatus() {
@@ -107,6 +107,8 @@ public class HostNodeConnector extends Thread {
 
         //request for dir map
         updateDirectoryMapper();
+        //synchronize host settings
+        uploadHostConfig();
 
         //主逻辑
         while (true) {
@@ -142,7 +144,7 @@ public class HostNodeConnector extends Thread {
             if (bindRetry <= 0) {
                 return;
             }
-            selectedPort = minPort + generator.nextInt(maxPort - minPort) + 1;//随机端口
+            selectedPort = minPort + FtpUtil.generator.nextInt(maxPort - minPort) + 1;//随机端口
             //尝试打开端口
             try {
                 ss = new ServerSocket(selectedPort);
@@ -231,6 +233,26 @@ public class HostNodeConnector extends Thread {
                 System.out.println("Error commit directory mapper.");
             }
         }
+    }
+
+    private void uploadHostConfig() {
+        Tunables hostTunables = mHost.getTunables();
+        Object[][] data = {{"anon_max_rate", hostTunables.hostAnonTransferRateMax},
+                {"user_max_rate", hostTunables.hostTransferRateMax},
+                {"ascii_charset", hostTunables.hostDefaultTransferCharset}};
+
+        for (Object[] cfg : data) {
+            if (cfg == null || cfg.length < 2) {
+                continue;
+            }
+
+            FtpUtil.ftpWriteStringRaw(mOut, "CONF " + cfg[0] + '=' + cfg[1]);
+            if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_CONFOK) {
+                System.out.println("Error upload host config.");
+                return;
+            }
+        }
+        System.out.println("Host config uploaded!");
     }
 
     public HostNodeSession getNodeSession(HostServant servant) {

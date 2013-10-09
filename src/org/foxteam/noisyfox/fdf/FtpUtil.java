@@ -5,10 +5,7 @@ import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
-import java.util.Vector;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -19,6 +16,8 @@ import java.util.regex.Pattern;
  * To change this template use File | Settings | File Templates.
  */
 public class FtpUtil {
+    public final static Random generator = new Random();//随机数
+
     public static void ftpWriteStringCommon(PrintWriter out, int status, char sep, String str) {
         StringBuilder sb = new StringBuilder(50);
         sb.append(status);
