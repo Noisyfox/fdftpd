@@ -86,10 +86,6 @@ public class Path {
                 }
             }
         }
-        if (point < 0) {
-            mLevels = new String[]{"/"};
-            return;
-        }
 
         mLevels = new String[point + 2];
         //判断第一位是根目录、当前目录或home
