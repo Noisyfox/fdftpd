@@ -30,6 +30,14 @@ public class FilePermission {
     LinkedList<Pair<Path, Integer>> mDirs = new LinkedList<Pair<Path, Integer>>();
     LinkedList<Pair<Path, Integer>> mFiles = new LinkedList<Pair<Path, Integer>>();
 
+    public LinkedList<Pair<Path, Integer>> getPermissionPairDir(){
+        return mDirs;
+    }
+
+    public LinkedList<Pair<Path, Integer>> getPermissionPairFile(){
+        return mFiles;
+    }
+
     public void addPermission(boolean isDir, boolean canRead, boolean canWrite, boolean canExecute, Path path, char suffix) {
         Pair<Path, Integer> access = new Pair<Path, Integer>();
         access.setValue1(path);

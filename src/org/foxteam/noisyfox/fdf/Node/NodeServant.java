@@ -1,5 +1,6 @@
 package org.foxteam.noisyfox.fdf.Node;
 
+import org.foxteam.noisyfox.fdf.FilePermission;
 import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
@@ -278,6 +279,10 @@ public class NodeServant extends Thread {
             } else if ("RADDR".equals(mHostCmdArg.mCmd)) {
                 mSession.userRemoteAddr = mHostCmdArg.mArg;
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK, ' ', "Remote address updated:", mSession.userRemoteAddr);
+            } else if ("PERD".equals(mHostCmdArg.mCmd)) {
+                handlePermission(true);
+            } else if ("PERF".equals(mHostCmdArg.mCmd)) {
+                handlePermission(false);
             } else if ("REVE".equals(mHostCmdArg)) {
                 handleBridge(true);
             } else if ("SEND".equals(mHostCmdArg)) {
@@ -294,6 +299,33 @@ public class NodeServant extends Thread {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
         }
+    }
+
+    private void handlePermission(boolean isDir) {
+        String[] val = mHostCmdArg.mArg.split("::");
+        if (val.length < 2) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal file permission:", mHostCmdArg.mArg);
+            return;
+        }
+        Path fileP = Path.valueOf(val[0]);
+        int pCode;
+        try {
+            pCode = Integer.parseInt(val[1]);
+        } catch (NumberFormatException e) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal file permission:", mHostCmdArg.mArg);
+            return;
+        }
+        char c = '-';
+        if ((pCode & FilePermission.ACCESS_INHERIT) != 0) {
+            c = '*';
+        } else if ((pCode & FilePermission.ACCESS_DIRECTORY) != 0) {
+            c = '?';
+        }
+        mSession.permission.addPermission(isDir, (pCode & FilePermission.ACCESS_READ) != 0,
+                (pCode & FilePermission.ACCESS_WRITE) != 0,
+                (pCode & FilePermission.ACCESS_EXECUTE) != 0, fileP, c);
+        FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK, ' ', "Add file permission:", mHostCmdArg.mArg);
+
     }
 
     private void handleCwd() {

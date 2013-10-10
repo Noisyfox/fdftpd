@@ -1,7 +1,7 @@
 package org.foxteam.noisyfox.fdf.Node;
 
-import org.foxteam.noisyfox.fdf.Path;
-import org.foxteam.noisyfox.fdf.RateRestriction;
+import org.foxteam.noisyfox.fdf.*;
+import org.foxteam.noisyfox.fdf.FilePermission;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -24,6 +24,7 @@ public class NodeSession extends RateRestriction {
 
     //protected String[] userCmdsAllowed = {}; //用户白名单
     //protected String[] userCmdsDenied = {}; //用户黑名单
+    protected FilePermission permission = new FilePermission();
 
     protected Path userCurrentDir = Path.valueOf("/");
     //protected String userHomeDir = "C:\\";

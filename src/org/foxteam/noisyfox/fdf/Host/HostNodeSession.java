@@ -1,12 +1,10 @@
 package org.foxteam.noisyfox.fdf.Host;
 
-import org.foxteam.noisyfox.fdf.FtpCodes;
-import org.foxteam.noisyfox.fdf.FtpUtil;
-import org.foxteam.noisyfox.fdf.NodeRespond;
-import org.foxteam.noisyfox.fdf.Path;
+import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.LinkedList;
 
 /**
  * Created with IntelliJ IDEA.
@@ -80,6 +78,23 @@ public class HostNodeSession extends Thread {
         if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
             System.out.println("Error exchanging information.");
             return false;
+        }
+        //传输permission设置
+        LinkedList<Pair<Path, Integer>> dirPair = mHostServant.mSession.permission.getPermissionPairDir();
+        for (Pair<Path, Integer> p : dirPair) {
+            FtpUtil.ftpWriteStringRaw(mWriter, "PERD " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
+            if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
+                System.out.println("Error exchanging information.");
+                return false;
+            }
+        }
+        LinkedList<Pair<Path, Integer>> filePair = mHostServant.mSession.permission.getPermissionPairFile();
+        for (Pair<Path, Integer> p : filePair) {
+            FtpUtil.ftpWriteStringRaw(mWriter, "PERF " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
+            if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
+                System.out.println("Error exchanging information.");
+                return false;
+            }
         }
 
         this.start();
@@ -190,6 +205,9 @@ public class HostNodeSession extends Thread {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_BADCMD, ' ', "Enter Passive Mode Failed.");
             } else {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+                if (mNodeRespond.mStatus.mStatusCode == FtpCodes.FTP_PASVOK) {
+                    mHostServant.mSession.userTransformActivatedNode = mConnector.mHostNodeDefinition.number;
+                }
             }
         }
     }
@@ -203,6 +221,9 @@ public class HostNodeSession extends Thread {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_BADCMD, ' ', "Enter Passive Mode Failed.");
             } else {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+                if (mNodeRespond.mStatus.mStatusCode == FtpCodes.FTP_PORTOK) {
+                    mHostServant.mSession.userTransformActivatedNode = mConnector.mHostNodeDefinition.number;
+                }
             }
         }
     }
