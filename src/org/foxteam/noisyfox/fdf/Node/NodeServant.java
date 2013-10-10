@@ -27,6 +27,15 @@ public class NodeServant extends Thread {
     private int mMidwayStatusCode = -1;//储存所有不是在handle*()函数中产生的状态信息
     private Object[] mMidwayStatusMsg = null;
 
+    private FtpBridge mCurrentBridge = null;
+    private FtpBridge.OnBridgeWorkFinishListener mBridgeFinishListener = new FtpBridge.OnBridgeWorkFinishListener() {
+        @Override
+        public void onWorkFinish() {
+            ioCloseConnection();
+            mCurrentBridge = null;
+        }
+    };
+
     public NodeServant(NodeCenter nodeCenter, Socket socket) throws IOException {
         mNodeCenter = nodeCenter;
         mDirectoryMapper = mNodeCenter.mDirectoryMapper;
@@ -269,6 +278,10 @@ public class NodeServant extends Thread {
             } else if ("RADDR".equals(mHostCmdArg.mCmd)) {
                 mSession.userRemoteAddr = mHostCmdArg.mArg;
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK, ' ', "Remote address updated:", mSession.userRemoteAddr);
+            } else if ("REVE".equals(mHostCmdArg)) {
+                handleBridge(true);
+            } else if ("SEND".equals(mHostCmdArg)) {
+                handleBridge(false);
             } else if ("CWD".equals(mHostCmdArg.mCmd)) {
                 handleCwd();
             } else if ("PASV".equals(mHostCmdArg.mCmd)) {
@@ -365,6 +378,45 @@ public class NodeServant extends Thread {
             }
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
         }
+    }
+
+    private void handleBridge(boolean isReceive) {
+        if (mCurrentBridge != null && !mCurrentBridge.isDead()) {
+            mCurrentBridge.kill();
+        }
+
+        if (!checkDataTransferOk()) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, mMidwayStatusCode, mMidwayStatusMsg);
+            return;
+        }
+
+        //Open data transfer stream
+        if (!ioOpenConnection("")) {
+            cleanPasv();
+            cleanPort();
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ',
+                    "Open bridge failed.");
+            return;
+        }
+
+        //Open bridge
+        ServerSocket listener = FtpUtil.openRandomPort();
+        if (listener == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ',
+                    "Open bridge failed.");
+            return;
+        }
+        int port = listener.getLocalPort();
+        mCurrentBridge = new FtpBridge(listener, mHostCmdArg.mArg, mBridgeFinishListener);
+
+        if (isReceive) {
+            mCurrentBridge.startForReceiving(mSession.userDataTransferWriterBinary);
+        } else {
+            mCurrentBridge.startForSending(mSession.userDataTransferReaderBinary);
+        }
+
+        FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.NODE_BRIDGEOK, ' ',
+                port);
     }
 
 }
