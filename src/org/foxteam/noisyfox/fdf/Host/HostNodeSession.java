@@ -228,4 +228,23 @@ public class HostNodeSession extends Thread {
         }
     }
 
+    public void handleStat(Path path, String filter) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_STATFILE_OK, '-', "Status follows:");
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "STAT " + path.getAbsolutePath() + "::" + filter);
+            while (readAndCheckStatus(false, FtpCodes.NODE_OPSMSG, FtpCodes.FTP_STATFILE_OK)) {
+                FtpUtil.ftpWriteStringRaw(mHostServant.mOut, mNodeRespond.mStatus.mStatusMsg);
+            }
+            if (mNodeRespond.mRespondCode == FtpCodes.NODE_OPSOK) {
+                if (mNodeRespond.mStatus.mStatusCode != FtpCodes.FTP_STATFILE_OK) {
+                    FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+                }
+            }
+
+            FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_STATFILE_OK, ' ', "End of status");
+        }
+    }
 }

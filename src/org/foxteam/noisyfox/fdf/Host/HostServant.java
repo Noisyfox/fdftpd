@@ -356,7 +356,6 @@ public class HostServant extends Thread {
                 mNodeController.chooseNode(pathNode);
                 HostNodeSession nodeSession = mNodeController.getNodeSession();
                 nodeSession.handlePasv();
-                mSession.userTransformActivatedNode = pathNode;
             } catch (IndexOutOfBoundsException ex) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             }
@@ -404,11 +403,19 @@ public class HostServant extends Thread {
                 mNodeController.chooseNode(pathNode);
                 HostNodeSession nodeSession = mNodeController.getNodeSession();
                 nodeSession.handlePort(mSession.mFtpCmdArg.mArg);
-                mSession.userTransformActivatedNode = pathNode;
             } catch (IndexOutOfBoundsException ex) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to change directory.");
             }
         }
+    }
+
+    private void handleStat(Path path, String filter) {
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, '-', "Status follows:");
+
+        FtpUtil.outPutDir(mOut, path, filter,
+                true, mSession.userAnon, mTunables, mSession.permission, "");
+
+        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, ' ', "End of status");
     }
 
     private void handleDirCommon(boolean fullDetails, boolean statCmd) {
@@ -433,6 +440,34 @@ public class HostServant extends Thread {
             filterStr = mSession.mFtpCmdArg.mArg;
         }
 
+        //解析filter
+        //找到第一个最后一级不包含通配符的路径
+        filterStr = filterStr.replace('\\', '/');//全部转成/分割
+        int firstWildcard1 = filterStr.indexOf('?');
+        int firstWildcard2 = filterStr.indexOf('*');
+        int firstWildcard;
+        if (firstWildcard1 == -1 && firstWildcard2 == -1) {
+            firstWildcard = -1;
+        } else if (firstWildcard1 == -1) {
+            firstWildcard = firstWildcard2;
+        } else if (firstWildcard2 == -1) {
+            firstWildcard = firstWildcard1;
+        } else {
+            firstWildcard = Math.min(firstWildcard1, firstWildcard2);
+        }
+        int lastSplashBeforeWildcard = filterStr.lastIndexOf('/', firstWildcard);
+        String newPath;
+        if (lastSplashBeforeWildcard == -1) {
+            newPath = ".";
+        } else {
+            newPath = filterStr.substring(0, lastSplashBeforeWildcard);
+            filterStr = filterStr.substring(lastSplashBeforeWildcard + 1);
+            if (newPath.isEmpty()) {
+                newPath = ".";
+            }
+        }
+        dirNamePath = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(newPath));
+
         boolean useControl = false;
 
         if (!checkFileAccess(dirNamePath, FilePermission.OPERATION_DIRECTORY_LIST)) {
@@ -440,73 +475,51 @@ public class HostServant extends Thread {
             return;
         }
 
+        //然后判断目标目录位置
+        int pathNode = mHost.getDirMapper().map(dirNamePath);
 
-        //开始传输数据
         if (statCmd) {
-            useControl = true;
-            optionStr += 'a';
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, '-', "Status follows:");
-        } else {
-            if (!ioOpenConnection("Here comes the directory listing.")) {
+            if (pathNode == -1) {
+                handleStat(dirNamePath, filterStr);
+            } else {
+                try {
+                    mNodeController.chooseNode(pathNode);
+                    HostNodeSession nodeSession = mNodeController.getNodeSession();
+                    nodeSession.handleStat(dirNamePath, filterStr);
+                } catch (IndexOutOfBoundsException ex) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Failed to get stat.");
+                }
+            }
+            return;
+        }
+
+
+        if (pathNode == -1) {
+            if (mSession.userTransformActivatedNode == -1) {
+                //开始传输数据
+                if (!ioOpenConnection("Here comes the directory listing.")) {
+                    cleanPasv();
+                    cleanPort();
+                    return;
+                }
+
+                //开始列举目录
+                boolean transferSuccess = FtpUtil.outPutDir(mSession.userDataTransferWriterAscii, dirNamePath, filterStr,
+                        fullDetails, mSession.userAnon, mTunables, mSession.permission, "");
+
+                ioCloseConnection();
+
+                if (!transferSuccess) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
+                } else {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Directory send OK.");
+                }
+
+                checkAbort();
+
                 cleanPasv();
                 cleanPort();
-                return;
             }
-        }
-
-        PrintWriter selectedWriter = useControl ? mOut : mSession.userDataTransferWriterAscii;
-
-        boolean transferSuccess = true;
-        //开始列举目录
-        File[] files = FtpUtil.ftpListFileFilter(dirNamePath, filterStr);
-        if (files != null) {
-            if (fullDetails) {
-                for (File f : files) {
-                    int accessCode = 0;
-                    if (mSession.userAnon) {
-                        accessCode |= FilePermission.ACCESS_READ;
-                        if (mTunables.hostAnonUploadEnabled) {
-                            accessCode |= FilePermission.ACCESS_WRITE;
-                        }
-                    } else {
-                        accessCode = mSession.permission.getAccess(Path.valueOf(f));
-                    }
-                    selectedWriter.println(FtpUtil.ftpFileNameFormat(f, accessCode));
-                    if (selectedWriter.checkError()) {
-                        transferSuccess = false;
-                        break;
-                    }
-                }
-            } else {
-                for (File f : files) {
-                    selectedWriter.println(f.getName());
-                    if (selectedWriter.checkError()) {
-                        transferSuccess = false;
-                        break;
-                    }
-                }
-            }
-        }
-        selectedWriter.flush();
-
-
-        if (!statCmd) {
-            ioCloseConnection();
-        }
-
-        if (statCmd) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, ' ', "End of status");
-        } else if (!transferSuccess) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
-        } else {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Directory send OK.");
-        }
-
-        checkAbort();
-
-        if (!statCmd) {
-            cleanPasv();
-            cleanPort();
         }
     }
 

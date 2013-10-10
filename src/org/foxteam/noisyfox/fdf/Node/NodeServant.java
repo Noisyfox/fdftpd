@@ -295,6 +295,8 @@ public class NodeServant extends Thread {
                 handlePort();
             } else if ("SIZE".equals(mHostCmdArg.mCmd)) {
                 handleSize();
+            } else if ("STAT".equals(mHostCmdArg.mCmd)) {
+                handleStat();
             } else {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
@@ -409,6 +411,24 @@ public class NodeServant extends Thread {
                 return;
             }
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
+        }
+    }
+
+    private void handleStat() {
+        String[] val = mHostCmdArg.mArg.split("::");
+        if (val.length < 2) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal STAT command");
+            return;
+        }
+
+        Path rp = mDirectoryMapper.map(Path.valueOf(val[0]));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file stat");
+        } else {
+            FtpUtil.outPutDir(mWriter, rp, val[1],
+                    true, mSession.userAnon, mNodeCenter.mTunables, mSession.permission,
+                    FtpCodes.NODE_OPSMSG + " " + FtpCodes.FTP_STATFILE_OK + " ");
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_STATFILE_OK, ' ', "STAT finish.");
         }
     }
 

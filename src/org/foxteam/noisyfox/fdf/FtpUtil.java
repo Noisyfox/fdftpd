@@ -103,35 +103,7 @@ public class FtpUtil {
 
     public static File[] ftpListFileFilter(Path path, String filter) {
         try {
-            //找到第一个最后一级不包含通配符的路径
-            filter = filter.replace('\\', '/');//全部转成/分割
-            int firstWildcard1 = filter.indexOf('?');
-            int firstWildcard2 = filter.indexOf('*');
-            int firstWildcard;
-            if (firstWildcard1 == -1 && firstWildcard2 == -1) {
-                firstWildcard = -1;
-            } else if (firstWildcard1 == -1) {
-                firstWildcard = firstWildcard2;
-            } else if (firstWildcard2 == -1) {
-                firstWildcard = firstWildcard1;
-            } else {
-                firstWildcard = Math.min(firstWildcard1, firstWildcard2);
-            }
-            int lastSplashBeforeWildcard = filter.lastIndexOf('/', firstWildcard);
-            String newPath;
-            if (lastSplashBeforeWildcard == -1) {
-                newPath = "";
-            } else {
-                newPath = filter.substring(0, lastSplashBeforeWildcard);
-                if (lastSplashBeforeWildcard + 1 >= filter.length()) {
-                    filter = "";
-                } else {
-                    filter = filter.substring(lastSplashBeforeWildcard + 1);
-                }
-            }
-
-            Path targetPath = FtpUtil.ftpGetRealPath(path, Path.valueOf("."), Path.valueOf(newPath));
-            File tFile = targetPath.getFile();
+            File tFile = path.getFile();
             if (filter.isEmpty()) {
                 if (!tFile.exists() || !tFile.canRead()) return null;
                 if (tFile.isFile()) return new File[]{tFile};
@@ -300,7 +272,7 @@ public class FtpUtil {
                 return true;
             }
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
         return false;
     }
@@ -357,6 +329,41 @@ public class FtpUtil {
     public static String getSocketRemoteAddress(Socket socket) {
         String oAddr = socket.getRemoteSocketAddress().toString();
         return oAddr.substring(1, oAddr.indexOf(':'));
+    }
+
+    public static boolean outPutDir(PrintWriter writer, Path dirPath, String filter, boolean fullDetails,
+                                    boolean isAnon, Tunables tunables, FilePermission permission,
+                                    String prefix) {
+        //开始列举目录
+        File[] files = FtpUtil.ftpListFileFilter(dirPath, filter);
+        if (files != null) {
+            if (fullDetails) {
+                for (File f : files) {
+                    int accessCode = 0;
+                    if (isAnon) {
+                        accessCode |= FilePermission.ACCESS_READ;
+                        if (tunables.hostAnonUploadEnabled) {
+                            accessCode |= FilePermission.ACCESS_WRITE;
+                        }
+                    } else {
+                        accessCode = permission.getAccess(Path.valueOf(f));
+                    }
+                    writer.println(prefix + FtpUtil.ftpFileNameFormat(f, accessCode));
+                    if (writer.checkError()) {
+                        return false;
+                    }
+                }
+            } else {
+                for (File f : files) {
+                    writer.println(prefix + f.getName());
+                    if (writer.checkError()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        writer.flush();
+        return true;
     }
 
 }

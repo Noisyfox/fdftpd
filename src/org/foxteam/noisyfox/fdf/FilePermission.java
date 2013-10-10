@@ -30,11 +30,11 @@ public class FilePermission {
     LinkedList<Pair<Path, Integer>> mDirs = new LinkedList<Pair<Path, Integer>>();
     LinkedList<Pair<Path, Integer>> mFiles = new LinkedList<Pair<Path, Integer>>();
 
-    public LinkedList<Pair<Path, Integer>> getPermissionPairDir(){
+    public LinkedList<Pair<Path, Integer>> getPermissionPairDir() {
         return mDirs;
     }
 
-    public LinkedList<Pair<Path, Integer>> getPermissionPairFile(){
+    public LinkedList<Pair<Path, Integer>> getPermissionPairFile() {
         return mFiles;
     }
 
