@@ -6,6 +6,7 @@ import org.foxteam.noisyfox.fdf.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Date;
 
 /**
  * Created with IntelliJ IDEA.
@@ -300,6 +301,8 @@ public class NodeServant extends Thread {
                 handleStat();
             } else if ("LIST".equals(mHostCmdArg.mCmd)) {
                 handleList();
+            } else if ("MDTM".equals(mHostCmdArg.mCmd)) {
+                handleMdtm();
             } else if ("QUIT".equals(mHostCmdArg.mCmd)) {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_GOODBYE, ' ', "Goodbye.");
                 break;
@@ -417,6 +420,44 @@ public class NodeServant extends Thread {
                 return;
             }
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_SIZEOK, ' ', String.valueOf(f.length()));
+        }
+    }
+
+    private void handleMdtm() {
+        String[] val = mHostCmdArg.mArg.split("::");
+        if (val.length < 2) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal MDTM command");
+            return;
+        }
+        long mTime;
+        try {
+            mTime = Long.parseLong(val[1]);
+        } catch (NumberFormatException ex) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal MDTM command");
+            return;
+        }
+
+        Path rp = mDirectoryMapper.map(Path.valueOf(val[0]));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ',
+                    mTime >= 0 ? "Could not set file modification time." : "Could not get file modification time.");
+        } else {
+            File f = rp.getFile();
+            if (!f.exists() || f.isDirectory()) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ',
+                        mTime >= 0 ? "Could not set file modification time." : "Could not get file modification time.");
+                return;
+            }
+            if (mTime >= 0) {
+                try {
+                    f.setLastModified(mTime);
+                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_MDTMOK, ' ', "File modification time set.");
+                } catch (Exception e) {
+                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not set file modification time.");
+                }
+            } else {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_MDTMOK, ' ', FtpUtil.dateFormatMdtm.format(new Date(f.lastModified())));
+            }
         }
     }
 

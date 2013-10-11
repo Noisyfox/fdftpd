@@ -201,6 +201,20 @@ public class HostNodeSession extends Thread {
         }
     }
 
+    public void handleMdtm(Path path, long mTime) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "MDTM " + path.getAbsolutePath() + "::" + mTime);
+            if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ',
+                        mTime >= 0 ? "Could not set file modification time." : "Could not get file modification time.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
+        }
+    }
+
     public void handlePasv() {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();

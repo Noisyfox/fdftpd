@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
  */
 public class FtpUtil {
     public final static Random generator = new Random();//随机数
+    public final static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
 
     public static void ftpWriteStringCommon(PrintWriter out, int status, char sep, String str) {
         StringBuilder sb = new StringBuilder(50);

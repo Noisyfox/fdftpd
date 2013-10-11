@@ -7,7 +7,6 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -712,8 +711,6 @@ public class HostServant extends Thread {
         }
     }
 
-    private static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
-
     private void handleMdtm() {
         Path fileName = null;
         Date modifyTime = null;
@@ -723,7 +720,7 @@ public class HostServant extends Thread {
         if (firstSpaceLoc == 14) {
             String timeStr = mSession.mFtpCmdArg.mArg.substring(0, firstSpaceLoc);
             try {
-                modifyTime = dateFormatMdtm.parse(timeStr);
+                modifyTime = FtpUtil.dateFormatMdtm.parse(timeStr);
                 fileName = Path.valueOf(mSession.mFtpCmdArg.mArg.substring(firstSpaceLoc).trim());
                 isSet = true;
             } catch (ParseException e) {
@@ -735,29 +732,40 @@ public class HostServant extends Thread {
         }
         //获取真实路径
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, fileName);
-
-        File f = rp.getFile();
-        if (!f.exists() || f.isDirectory()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
-                    isSet ? "Could not set file modification time." : "Could not get file modification time.");
+        int operate = isSet ? FilePermission.OPERATION_FILE_DIR_WRITE : FilePermission.OPERATION_FILE_DIR_READ;
+        if (!checkFileAccess(rp, operate)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
-        } else {
-            int operate = isSet ? FilePermission.OPERATION_FILE_DIR_WRITE : FilePermission.OPERATION_FILE_DIR_READ;
-            if (!checkFileAccess(rp, operate)) {
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
-                return;
-            }
         }
 
-        if (isSet) {
-            try {
-                f.setLastModified(modifyTime.getTime());
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', "File modification time set.");
-            } catch (Exception e) {
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not set file modification time.");
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            File f = rp.getFile();
+            if (!f.exists() || f.isDirectory()) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
+                        isSet ? "Could not set file modification time." : "Could not get file modification time.");
+                return;
+            }
+
+            if (isSet) {
+                try {
+                    f.setLastModified(modifyTime.getTime());
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', "File modification time set.");
+                } catch (Exception e) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Could not set file modification time.");
+                }
+            } else {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', FtpUtil.dateFormatMdtm.format(new Date(f.lastModified())));
             }
         } else {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MDTMOK, ' ', dateFormatMdtm.format(new Date(f.lastModified())));
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleMdtm(rp, modifyTime == null ? -1 : modifyTime.getTime());
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ',
+                        isSet ? "Could not set file modification time." : "Could not get file modification time.");
+            }
         }
     }
 
