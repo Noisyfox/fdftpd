@@ -303,6 +303,12 @@ public class NodeServant extends Thread {
                 handleList();
             } else if ("MDTM".equals(mHostCmdArg.mCmd)) {
                 handleMdtm();
+            } else if ("MKD".equals(mHostCmdArg.mCmd)) {
+                handleMkd();
+            } else if ("RMD".equals(mHostCmdArg.mCmd)) {
+                handleRmd();
+            } else if ("DELE".equals(mHostCmdArg.mCmd)) {
+                handleDele();
             } else if ("QUIT".equals(mHostCmdArg.mCmd)) {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_GOODBYE, ' ', "Goodbye.");
                 break;
@@ -457,6 +463,49 @@ public class NodeServant extends Thread {
                 }
             } else {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_MDTMOK, ' ', FtpUtil.dateFormatMdtm.format(new Date(f.lastModified())));
+            }
+        }
+    }
+
+    private void handleMkd() {
+        Path rp = mDirectoryMapper.map(Path.valueOf(mHostCmdArg.mArg));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
+        } else {
+            File f = rp.getFile();
+            if (f.mkdirs()) {
+                mHostCmdArg.mArg = mHostCmdArg.mArg.replace("\"", "\"\"");
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_MKDIROK, ' ', "\"" + mHostCmdArg.mArg + "\" created.");
+            } else {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
+            }
+        }
+    }
+
+    private void handleRmd() {
+        Path rp = mDirectoryMapper.map(Path.valueOf(mHostCmdArg.mArg));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
+        } else {
+            File f = rp.getFile();
+            if (f.isDirectory() && f.delete()) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
+            } else {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
+            }
+        }
+    }
+
+    private void handleDele() {
+        Path rp = mDirectoryMapper.map(Path.valueOf(mHostCmdArg.mArg));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
+        } else {
+            File f = rp.getFile();
+            if (!f.isDirectory() && f.delete()) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
+            } else {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
             }
         }
     }

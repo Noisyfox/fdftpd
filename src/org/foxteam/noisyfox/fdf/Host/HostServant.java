@@ -1061,12 +1061,23 @@ public class HostServant extends Thread {
             return;
         }
 
-        File f = rp.getFile();
-        if (f.mkdirs()) {
-            mSession.mFtpCmdArg.mArg = mSession.mFtpCmdArg.mArg.replace("\"", "\"\"");
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MKDIROK, ' ', "\"" + mSession.mFtpCmdArg.mArg + "\" created.");
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            File f = rp.getFile();
+            if (f.mkdirs()) {
+                mSession.mFtpCmdArg.mArg = mSession.mFtpCmdArg.mArg.replace("\"", "\"\"");
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_MKDIROK, ' ', "\"" + mSession.mFtpCmdArg.mArg + "\" created.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
+            }
         } else {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleMkd(rp);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Create directory operation failed.");
+            }
         }
     }
 
@@ -1077,11 +1088,22 @@ public class HostServant extends Thread {
             return;
         }
 
-        File f = rp.getFile();
-        if (f.isDirectory() && f.delete()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            File f = rp.getFile();
+            if (f.isDirectory() && f.delete()) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RMDIROK, ' ', "Remove directory operation successful.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
+            }
         } else {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleRmd(rp);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Remove directory operation failed.");
+            }
         }
     }
 
@@ -1092,11 +1114,22 @@ public class HostServant extends Thread {
             return;
         }
 
-        File f = rp.getFile();
-        if (!f.isDirectory() && f.delete()) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            File f = rp.getFile();
+            if (!f.isDirectory() && f.delete()) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
+            }
         } else {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleDele(rp);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
+            }
         }
     }
 
