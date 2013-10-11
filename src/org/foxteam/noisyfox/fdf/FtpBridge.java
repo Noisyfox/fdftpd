@@ -37,7 +37,7 @@ public class FtpBridge extends Thread {
     }
 
     public synchronized void startForReceiving(BufferedOutputStream dstStream) {
-        if (isStarted) {
+        if (isStarted || isKilled) {
             return;
         }
         isReceive = true;
@@ -47,7 +47,7 @@ public class FtpBridge extends Thread {
     }
 
     public synchronized void startForSending(BufferedInputStream resStream) {
-        if (isStarted) {
+        if (isStarted || isKilled) {
             return;
         }
         isReceive = false;
@@ -140,13 +140,25 @@ public class FtpBridge extends Thread {
 
     public void kill() {
         synchronized (mWaitObj) {
-            if (isKilled) {
-                return;
-            }
-            isKilled = true;
-            try {
-                mWaitObj.wait();
-            } catch (InterruptedException ignored) {
+            if (isStarted) {
+                if (isKilled) {
+                    return;
+                }
+                isKilled = true;
+                try {
+                    mWaitObj.wait();
+                } catch (InterruptedException ignored) {
+                }
+            } else {
+                if (isKilled) {
+                    return;
+                }
+                isKilled = true;
+                try {
+                    mSocketServer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
             }
         }
     }

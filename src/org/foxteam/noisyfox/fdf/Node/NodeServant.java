@@ -145,7 +145,7 @@ public class NodeServant extends Thread {
                 return false;
             }
             long maxRate = mSession.userAnon ? mNodeCenter.mTunables.hostAnonTransferRateMax : mNodeCenter.mTunables.hostTransferRateMax;
-            String charSet = mSession.isUTF8Required ? "UTF-8" : mNodeCenter.mTunables.hostDefaultTransferCharset; //使用默认编码
+            String charSet = mSession.asciiCharset; //使用默认编码
             InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, maxRate);
             tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
             tempReaderBinary = new BufferedInputStream(is);
@@ -193,7 +193,7 @@ public class NodeServant extends Thread {
         try {
             long maxRate = mSession.userAnon ? mNodeCenter.mTunables.hostAnonTransferRateMax : mNodeCenter.mTunables.hostTransferRateMax;
             tempSocket = new Socket(mSession.userPortSocketAddr, mSession.userPortSocketPort);
-            String charSet = mSession.isUTF8Required ? "UTF-8" : mNodeCenter.mTunables.hostDefaultTransferCharset; //使用默认编码
+            String charSet = mSession.asciiCharset; //使用默认编码
             InputStream is = new RateRestrictedInputStream(tempSocket.getInputStream(), mSession, maxRate);
             tempReaderAscii = new BufferedReader(new InputStreamReader(is, charSet));
             tempReaderBinary = new BufferedInputStream(is);
@@ -313,6 +313,30 @@ public class NodeServant extends Thread {
                 handleRnfr();
             } else if ("RNTO".equals(mHostCmdArg.mCmd)) {
                 handleRnto();
+            } else if ("TYPE".equals(mHostCmdArg.mCmd)) {
+                if ("I".equals(mHostCmdArg.mArg)) {
+                    mSession.isAscii = false;
+                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_TYPEOK, ' ', "Switching to Binary mode.");
+                } else if ("A".equals(mHostCmdArg.mArg)) {
+                    mSession.isAscii = true;
+                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_TYPEOK, ' ', "Switching to ASCII mode.");
+                } else {
+                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Unrecognised TYPE command.");
+                }
+            } else if ("REST".equals(mHostCmdArg.mCmd)) {
+                long pos = 0;
+                try {
+                    pos = Long.valueOf(mHostCmdArg.mArg);
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
+                mSession.userFileRestartOffset = pos;
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_RESTOK, ' ', "Restart position accepted (" + pos + ").");
+            } else if ("CSET".equals(mHostCmdArg.mCmd)) {
+                mSession.asciiCharset = mHostCmdArg.mArg;
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.NODE_CHARSETOK, ' ', "Charset set to " + mSession.asciiCharset);
+            } else if ("RETR".equals(mHostCmdArg.mCmd)) {
+                handleRetr(Path.valueOf(mHostCmdArg.mArg));
             } else if ("QUIT".equals(mHostCmdArg.mCmd)) {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_GOODBYE, ' ', "Goodbye.");
                 break;
@@ -558,7 +582,7 @@ public class NodeServant extends Thread {
     private void handleStat() {
         String[] val = mHostCmdArg.mArg.split("::");
         if (val.length < 2) {
-            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal STAT command");
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal STAT command.");
             return;
         }
 
@@ -576,7 +600,7 @@ public class NodeServant extends Thread {
     private void handleList() {
         String[] val = mHostCmdArg.mArg.split("::");
         if (val.length < 3) {
-            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal LIST command");
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal LIST command.");
             return;
         }
 
@@ -606,6 +630,156 @@ public class NodeServant extends Thread {
 
             cleanPasv();
             cleanPort();
+        }
+    }
+
+    private void handleDownloadAsciiCommon(Path path) {
+        File f = path.getFile();
+        BufferedReader br;
+        try {
+            br = new BufferedReader(new InputStreamReader(new FileInputStream(f),
+                    mSession.asciiCharset));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
+            return;
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
+            return;
+        }
+
+        if (!ioOpenConnection("")) {
+            cleanPasv();
+            cleanPort();
+            try {
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to establish connection.");
+            return;
+        }
+
+        boolean transferSuccess = true;
+        boolean fileReadSuccess = true;
+        String line;
+        try {
+            while ((line = br.readLine()) != null) {
+                mSession.userDataTransferWriterAscii.println(line);
+                if (!(transferSuccess = !mSession.userDataTransferWriterAscii.checkError())) {
+                    break;
+                }
+            }
+            if (transferSuccess) {
+                mSession.userDataTransferWriterAscii.flush();
+                transferSuccess = !mSession.userDataTransferWriterAscii.checkError();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            fileReadSuccess = false;
+        }
+
+        if (!fileReadSuccess) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADSENDFILE, ' ', "Failure reading local file.");
+        } else if (!transferSuccess) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
+        } else {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_TRANSFEROK, ' ', "Transfer complete.");
+        }
+
+        ioCloseConnection();
+
+        cleanPasv();
+        cleanPort();
+
+        try {
+            br.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void handleDownloadBinaryCommon(Path path) {
+        File f = path.getFile();
+        BufferedInputStream bis;
+        try {
+            bis = new BufferedInputStream(new FileInputStream(f));
+            try {
+                bis.skip(mSession.userFileRestartOffset);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
+            return;
+        }
+
+        if (!ioOpenConnection("")) {
+            cleanPasv();
+            cleanPort();
+            try {
+                bis.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to establish connection.");
+            return;
+        }
+
+        boolean transferSuccess = true;
+        boolean fileReadSuccess = true;
+        byte[] bytes = new byte[10240];
+        int size;
+        try {
+            while ((size = bis.read(bytes)) != -1) {
+                try {
+                    mSession.userDataTransferWriterBinary.write(bytes, 0, size);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    transferSuccess = false;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            fileReadSuccess = false;
+        }
+        try {
+            mSession.userDataTransferWriterBinary.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            transferSuccess = false;
+        }
+
+        if (!fileReadSuccess) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADSENDFILE, ' ', "Failure reading local file.");
+        } else if (!transferSuccess) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
+        } else {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_TRANSFEROK, ' ', "Transfer complete.");
+        }
+
+        ioCloseConnection();
+
+        cleanPasv();
+        cleanPort();
+
+        try {
+            bis.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void handleRetr(Path path) {
+        Path rp = mDirectoryMapper.map(path);
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not read file.");
+        } else {
+            if (mSession.isAscii) {
+                handleDownloadAsciiCommon(rp);
+            } else {
+                handleDownloadBinaryCommon(rp);
+            }
         }
     }
 

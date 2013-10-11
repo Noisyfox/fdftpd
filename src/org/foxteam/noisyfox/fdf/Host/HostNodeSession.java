@@ -202,6 +202,23 @@ public class HostNodeSession extends Thread {
         }
     }
 
+    public long doSize(Path path) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "SIZE " + path.getAbsolutePath());
+            if (readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_SIZEOK)) {
+                try {
+                    return Long.parseLong(mNodeRespond.mStatus.mStatusMsg);
+                } catch (NumberFormatException ex) {
+                    return -1;
+                }
+            } else {
+                return -1;
+            }
+        }
+    }
+
     public void handleMdtm(Path path, long mTime) {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
@@ -284,6 +301,36 @@ public class HostNodeSession extends Thread {
         }
     }
 
+    public boolean doType(boolean isAscii) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "TYPE " + (isAscii ? "A" : "I"));
+
+            return readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_TYPEOK);
+        }
+    }
+
+    public boolean doRest(long offset) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "REST " + offset);
+
+            return readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_RESTOK);
+        }
+    }
+
+    public boolean doCharset(String charset) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "CSET " + charset);
+
+            return readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.NODE_CHARSETOK);
+        }
+    }
+
     public void handlePasv() {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
@@ -316,7 +363,7 @@ public class HostNodeSession extends Thread {
         }
     }
 
-    public boolean handleHiddenPort(String portArg) {
+    public boolean doPort(String portArg) {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
 
@@ -382,6 +429,19 @@ public class HostNodeSession extends Thread {
             FtpUtil.ftpWriteStringRaw(mWriter, "LIST " + path.getAbsolutePath() + "::" + filter + "::" + (fullDetail ? 1 : 0));
             if (!readStatus(true) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
+        }
+    }
+
+    public void handleRetr(Path path) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "RETR " + path.getAbsolutePath());
+            if (!readStatus(true) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to send file.");
             } else {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
             }

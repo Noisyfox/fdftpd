@@ -21,7 +21,8 @@ public class NodeSession extends RateRestriction {
     protected boolean userAnon = false;
 
     protected boolean isAscii = false;
-    protected boolean isUTF8Required = false;
+    //protected boolean isUTF8Required = false;
+    protected String asciiCharset = "UTF-8";
 
     //protected String[] userCmdsAllowed = {}; //用户白名单
     //protected String[] userCmdsDenied = {}; //用户黑名单
