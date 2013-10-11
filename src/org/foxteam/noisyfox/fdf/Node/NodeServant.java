@@ -58,6 +58,7 @@ public class NodeServant extends Thread {
         System.out.println("Node servant started!");
         mSession = new NodeSession();
         servantLoop();
+        System.out.println("Node servant exit!");
     }
 
     //**************************************************************************************************************
@@ -297,6 +298,11 @@ public class NodeServant extends Thread {
                 handleSize();
             } else if ("STAT".equals(mHostCmdArg.mCmd)) {
                 handleStat();
+            } else if ("LIST".equals(mHostCmdArg.mCmd)) {
+                handleList();
+            } else if ("QUIT".equals(mHostCmdArg.mCmd)) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_GOODBYE, ' ', "Goodbye.");
+                break;
             } else {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
@@ -389,7 +395,7 @@ public class NodeServant extends Thread {
         * 1) Reject requests not connecting to the control socket IP
         * 2) Reject connects to privileged ports
         */
-        if (!sockAddr.equals(mSession.userRemoteAddr) || sockPort < FtpMain.IPPORT_RESERVED) {
+        if (sockPort < FtpMain.IPPORT_RESERVED) {
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
             return;
         }
@@ -432,6 +438,42 @@ public class NodeServant extends Thread {
         }
     }
 
+    private void handleList() {
+        String[] val = mHostCmdArg.mArg.split("::");
+        if (val.length < 3) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal LIST command");
+            return;
+        }
+
+        Path rp = mDirectoryMapper.map(Path.valueOf(val[0]));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not get file stat");
+        } else {
+            //开始传输数据
+            if (!ioOpenConnection("Here comes the directory listing.")) {
+                cleanPasv();
+                cleanPort();
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+                return;
+            }
+
+            //开始列举目录
+            boolean transferSuccess = FtpUtil.outPutDir(mSession.userDataTransferWriterAscii, rp, val[1],
+                    val[2].equals("1"), mSession.userAnon, mNodeCenter.mTunables, mSession.permission, "");
+
+            ioCloseConnection();
+
+            if (!transferSuccess) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
+            } else {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_TRANSFEROK, ' ', "Directory send OK.");
+            }
+
+            cleanPasv();
+            cleanPort();
+        }
+    }
+
     private void handleBridge(boolean isReceive) {
         if (mCurrentBridge != null && !mCurrentBridge.isDead()) {
             mCurrentBridge.kill();
@@ -446,7 +488,7 @@ public class NodeServant extends Thread {
         if (!ioOpenConnection("")) {
             cleanPasv();
             cleanPort();
-            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ',
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.NODE_BADBRIDGE, ' ',
                     "Open bridge failed.");
             return;
         }
@@ -454,7 +496,7 @@ public class NodeServant extends Thread {
         //Open bridge
         ServerSocket listener = FtpUtil.openRandomPort();
         if (listener == null) {
-            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ',
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.NODE_BADBRIDGE, ' ',
                     "Open bridge failed.");
             return;
         }

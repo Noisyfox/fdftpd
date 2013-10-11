@@ -26,6 +26,7 @@ public class HostNodeSession extends Thread {
     private long mCmdCallTimeStamp = 0L;
     private boolean mIsAlive = false;
     private boolean mIsKilled = false;
+    public int mBridgePort = -1;
 
     public HostNodeSession(HostNodeConnector connector, Socket socket) throws IOException {
         mConnector = connector;
@@ -40,6 +41,10 @@ public class HostNodeSession extends Thread {
             }
             throw new IOException(e);
         }
+    }
+
+    public String getNodeAddress() {
+        return mConnector.mHostNodeDefinition.adderss;
     }
 
     private boolean readStatus(boolean longWait) {
@@ -218,7 +223,7 @@ public class HostNodeSession extends Thread {
 
             FtpUtil.ftpWriteStringRaw(mWriter, "PORT " + portArg);
             if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
-                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_BADCMD, ' ', "Enter Passive Mode Failed.");
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_BADCMD, ' ', "Enter Port Mode Failed.");
             } else {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
                 if (mNodeRespond.mStatus.mStatusCode == FtpCodes.FTP_PORTOK) {
@@ -226,6 +231,45 @@ public class HostNodeSession extends Thread {
                 }
             }
         }
+    }
+
+    public boolean handleHiddenPort(String portArg) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "PORT " + portArg);
+            if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_PORTOK)) {
+                System.out.println("Enter port mode failed. PORT " + portArg);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    public boolean handleBridge(boolean receive, String connectorAddress) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            mBridgePort = -1;
+            FtpUtil.ftpWriteStringRaw(mWriter, (receive ? "REVE " : "SEND ") + connectorAddress);
+            if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK
+                    || mNodeRespond.mStatus.mStatusCode == FtpCodes.NODE_BADBRIDGE) {
+                System.out.println("Open bridge failed");
+                return false;
+            }
+            if (mNodeRespond.mStatus.mStatusCode == FtpCodes.NODE_BRIDGEOK) {
+                try {
+                    mBridgePort = Integer.parseInt(mNodeRespond.mStatus.mStatusMsg);
+                } catch (NumberFormatException ignored) {
+                    System.out.println("Open bridge failed");
+                    return false;
+                }
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+                return true;
+            }
+        }
+        return true;
     }
 
     public void handleStat(Path path, String filter) {
@@ -245,6 +289,19 @@ public class HostNodeSession extends Thread {
             }
 
             FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_STATFILE_OK, ' ', "End of status");
+        }
+    }
+
+    public void handleList(Path path, String filter, boolean fullDetail) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "LIST " + path.getAbsolutePath() + "::" + filter + "::" + (fullDetail ? 1 : 0));
+            if (!readStatus(true) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
         }
     }
 }

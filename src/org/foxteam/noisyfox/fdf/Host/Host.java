@@ -3,8 +3,10 @@ package org.foxteam.noisyfox.fdf.Host;
 import org.foxteam.noisyfox.fdf.Tunables;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 
 /**
@@ -19,6 +21,7 @@ public class Host {
     private final Tunables mTunables;
     private final HostDirectoryMapper mDirMapper;
     private final HashMap<Integer, HostNodeConnector> mNodeConnectorMap = new HashMap<Integer, HostNodeConnector>();
+    private String mHostAddress = "";
 
     public Host(Tunables tunables) {
         mTunables = tunables;
@@ -40,6 +43,13 @@ public class Host {
         try {
             Thread.sleep(5000);
         } catch (InterruptedException ignored) {
+        }
+
+        try {
+            InetAddress addr = InetAddress.getLocalHost();
+            mHostAddress = addr.getHostAddress().toString();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
         }
 
         System.out.println("Ftp server started!");
@@ -66,5 +76,9 @@ public class Host {
 
     public HostNodeConnector getHostNodeConnector(int number) {
         return mNodeConnectorMap.get(number);
+    }
+
+    public String getHostAddress() {
+        return mHostAddress;
     }
 }

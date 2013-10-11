@@ -409,6 +409,7 @@ public class HostServant extends Thread {
         }
     }
 
+    //***********************************************************************************************************************************
     private void handleStat(Path path, String filter) {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, '-', "Status follows:");
 
@@ -418,12 +419,182 @@ public class HostServant extends Thread {
         FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_STATFILE_OK, ' ', "End of status");
     }
 
+    private void handleDir(Path path, String filter, boolean fullDetails) {
+
+        //开始传输数据
+        if (!ioOpenConnection("Here comes the directory listing.")) {
+            cleanPasv();
+            cleanPort();
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            return;
+        }
+
+        //开始列举目录
+        boolean transferSuccess = FtpUtil.outPutDir(mSession.userDataTransferWriterAscii, path, filter,
+                fullDetails, mSession.userAnon, mTunables, mSession.permission, "");
+
+        ioCloseConnection();
+
+        if (!transferSuccess) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
+        } else {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Directory send OK.");
+        }
+
+        checkAbort();
+
+        cleanPasv();
+        cleanPort();
+    }
+
+    /**
+     * 客户端连接的是node，而目标文件在host上
+     *
+     * @param node        客户端连接的node
+     * @param path        目标文件的path
+     * @param filter      过滤器
+     * @param fullDetails 是否是完整信息
+     */
+    private void handleDirHostNode(int node, Path path, String filter, boolean fullDetails) {
+        try {
+            mNodeController.chooseNode(node);
+            HostNodeSession nodeSession = mNodeController.getNodeSession();
+            if (!nodeSession.handleBridge(true, mHost.getHostAddress())) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+                return;
+            }
+            if (nodeSession.mBridgePort == -1) {
+                return;
+            }
+            // bridge已建立
+            // 伪造port
+            cleanPort();
+            cleanPasv();
+            mSession.userPortSocketAddr = nodeSession.getNodeAddress();
+            mSession.userPortSocketPort = nodeSession.mBridgePort;
+
+            handleDir(path, filter, fullDetails);
+        } catch (IndexOutOfBoundsException ex) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+        }
+    }
+
+    /**
+     * 客户端连接的是host，而目标文件在node上
+     *
+     * @param node        目标文件所在的node
+     * @param path        目标文件的path
+     * @param filter      过滤器
+     * @param fullDetails 是否是完整信息
+     */
+    private void handleDirNodeHost(int node, Path path, String filter, boolean fullDetails) {
+        HostNodeSession nodeSession;
+        try {
+            mNodeController.chooseNode(node);
+            nodeSession = mNodeController.getNodeSession();
+        } catch (IndexOutOfBoundsException ex) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            return;
+        }
+
+        //建立本地桥
+        if (mSession.userCurrentActivatedBridge != null && !mSession.userCurrentActivatedBridge.isDead()) {
+            mSession.userCurrentActivatedBridge.kill();
+        }
+        ServerSocket listener = FtpUtil.openRandomPort();
+        if (listener == null) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            return;
+        }
+
+        mSession.userCurrentActivatedBridge = new FtpBridge(listener, nodeSession.getNodeAddress(), new FtpBridge.OnBridgeWorkFinishListener() {
+            @Override
+            public void onWorkFinish() {
+                ioCloseConnection();
+                cleanPasv();
+                cleanPort();
+                mSession.userCurrentActivatedBridge = null;
+            }
+        });
+
+        //开始传输数据
+        if (!ioOpenConnection("Here comes the directory listing.")) {
+            cleanPasv();
+            cleanPort();
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            return;
+        }
+        String myAddr = mHost.getHostAddress();
+        String portArg = myAddr.replace(".", ",");
+        int portNum = listener.getLocalPort();
+        portArg += "," + (portNum >> 8) + "," + (portNum & 0xFF);
+        if (!nodeSession.handleHiddenPort(portArg)) {
+            cleanPasv();
+            cleanPort();
+            mSession.userCurrentActivatedBridge.kill();
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            return;
+        }
+
+        mSession.userCurrentActivatedBridge.startForReceiving(mSession.userDataTransferWriterBinary);
+        nodeSession.handleList(path, filter, fullDetails);
+    }
+
+    /**
+     * 客户端连接的是activeNode，而目标文件在pathNode上
+     *
+     * @param pathNode    目标文件所在的node
+     * @param activeNode  客户端连接的node
+     * @param path        目标文件的path
+     * @param filter      过滤器
+     * @param fullDetails 是否是完整信息
+     */
+    private void handleDirNodeNode(int pathNode, int activeNode, Path path, String filter, boolean fullDetails) {
+        if (pathNode == activeNode) {
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleList(path, filter, fullDetails);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+            }
+        } else {
+            HostNodeSession pathNodeSession, activeNodeSession;
+            try {
+                mNodeController.chooseNode(pathNode);
+                pathNodeSession = mNodeController.getNodeSession();
+                mNodeController.chooseNode(activeNode);
+                activeNodeSession = mNodeController.getNodeSession();
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+                return;
+            }
+
+            if (!activeNodeSession.handleBridge(true, pathNodeSession.getNodeAddress())) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+                return;
+            }
+            if (activeNodeSession.mBridgePort == -1) {
+                return;
+            }
+
+            String myAddr = pathNodeSession.getNodeAddress();
+            String portArg = myAddr.replace(".", ",");
+            int portNum = activeNodeSession.mBridgePort;
+            portArg += "," + (portNum >> 8) + "," + (portNum & 0xFF);
+            if (!pathNodeSession.handleHiddenPort(portArg)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
+                return;
+            }
+
+            pathNodeSession.handleList(path, filter, fullDetails);
+        }
+    }
+
     private void handleDirCommon(boolean fullDetails, boolean statCmd) {
         if (!statCmd && !checkDataTransferOk()) {
             return;
         }
-
-        Path dirNamePath = mSession.userCurrentDir; //默认为当前路径
 
         String optionStr = "";
         String filterStr;
@@ -455,20 +626,24 @@ public class HostServant extends Thread {
         } else {
             firstWildcard = Math.min(firstWildcard1, firstWildcard2);
         }
-        int lastSplashBeforeWildcard = filterStr.lastIndexOf('/', firstWildcard);
         String newPath;
-        if (lastSplashBeforeWildcard == -1) {
-            newPath = ".";
+        if (firstWildcard == -1) {
+            newPath = filterStr;
+            filterStr = "";
         } else {
-            newPath = filterStr.substring(0, lastSplashBeforeWildcard);
-            filterStr = filterStr.substring(lastSplashBeforeWildcard + 1);
-            if (newPath.isEmpty()) {
+            int lastSplashBeforeWildcard = filterStr.lastIndexOf('/', firstWildcard);
+            if (lastSplashBeforeWildcard == -1) {
                 newPath = ".";
+            } else {
+                newPath = filterStr.substring(0, lastSplashBeforeWildcard);
+                filterStr = filterStr.substring(lastSplashBeforeWildcard + 1);
+                if (newPath.isEmpty()) {
+                    newPath = ".";
+                }
             }
         }
-        dirNamePath = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(newPath));
 
-        boolean useControl = false;
+        Path dirNamePath = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(newPath));
 
         if (!checkFileAccess(dirNamePath, FilePermission.OPERATION_DIRECTORY_LIST)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
@@ -496,32 +671,19 @@ public class HostServant extends Thread {
 
         if (pathNode == -1) {
             if (mSession.userTransformActivatedNode == -1) {
-                //开始传输数据
-                if (!ioOpenConnection("Here comes the directory listing.")) {
-                    cleanPasv();
-                    cleanPort();
-                    return;
-                }
-
-                //开始列举目录
-                boolean transferSuccess = FtpUtil.outPutDir(mSession.userDataTransferWriterAscii, dirNamePath, filterStr,
-                        fullDetails, mSession.userAnon, mTunables, mSession.permission, "");
-
-                ioCloseConnection();
-
-                if (!transferSuccess) {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failure writing network stream.");
-                } else {
-                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_TRANSFEROK, ' ', "Directory send OK.");
-                }
-
-                checkAbort();
-
-                cleanPasv();
-                cleanPort();
+                handleDir(dirNamePath, filterStr, fullDetails);
+            } else {
+                handleDirHostNode(mSession.userTransformActivatedNode, dirNamePath, filterStr, fullDetails);
+            }
+        } else {
+            if (mSession.userTransformActivatedNode == -1) {
+                handleDirNodeHost(pathNode, dirNamePath, filterStr, fullDetails);
+            } else {
+                handleDirNodeNode(pathNode, mSession.userTransformActivatedNode, dirNamePath, filterStr, fullDetails);
             }
         }
     }
+    //***********************************************************************************************************************************
 
     private void handleSize() {
         //获取真实路径

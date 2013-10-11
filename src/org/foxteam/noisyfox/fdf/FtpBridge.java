@@ -58,10 +58,12 @@ public class FtpBridge extends Thread {
 
     @Override
     public void run() {
+        System.out.println("Bridge started!");
         //开始监听
         try {
             mSocket = mSocketServer.accept();
         } catch (IOException e) {
+            onFinish();
             return;
         } finally {
             try {
@@ -71,7 +73,9 @@ public class FtpBridge extends Thread {
         }
         //检查是否是来自指定节点的连接
         String clientAddr = FtpUtil.getSocketRemoteAddress(mSocket);
+        System.out.println("Bridge get connection from " + clientAddr);
         if (!mNodeAddress.equals(clientAddr)) {
+            onFinish();
             return;
         }
 
@@ -83,6 +87,7 @@ public class FtpBridge extends Thread {
                     mSocket.close();
                 } catch (IOException ignored) {
                 }
+                onFinish();
                 return;
             }
         } else {
@@ -93,6 +98,7 @@ public class FtpBridge extends Thread {
                     mSocket.close();
                 } catch (IOException ignored) {
                 }
+                onFinish();
                 return;
             }
         }
@@ -117,6 +123,10 @@ public class FtpBridge extends Thread {
         } catch (IOException ignored) {
         }
 
+        onFinish();
+    }
+
+    private void onFinish() {
         if (mFinishListener != null) {
             mFinishListener.onWorkFinish();
         }
@@ -125,6 +135,7 @@ public class FtpBridge extends Thread {
             isKilled = true;
             mWaitObj.notify();
         }
+        System.out.println("Bridge finished!");
     }
 
     public void kill() {

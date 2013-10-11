@@ -1,9 +1,7 @@
 package org.foxteam.noisyfox.fdf.Host;
 
 import org.foxteam.noisyfox.fdf.FilePermission;
-import org.foxteam.noisyfox.fdf.Path;
-import org.foxteam.noisyfox.fdf.RateRestriction;
-import org.foxteam.noisyfox.fdf.RequestCmdArg;
+import org.foxteam.noisyfox.fdf.*;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -41,6 +39,7 @@ public class HostSession extends RateRestriction {
     protected ServerSocket userPasvSocketServer = null;
 
     protected int userTransformActivatedNode = -1;
+    protected FtpBridge userCurrentActivatedBridge = null;
 
     //数据传输流
     protected boolean userDataTransferAborReceived = false;

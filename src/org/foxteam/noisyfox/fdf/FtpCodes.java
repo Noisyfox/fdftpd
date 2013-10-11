@@ -95,5 +95,6 @@ public class FtpCodes {
     public static final int NODE_OPSMSG = 907;
     public static final int NODE_OPSOK = 908;
     public static final int NODE_BRIDGEOK = 909;
+    public static final int NODE_BADBRIDGE = 910;
 
 }
