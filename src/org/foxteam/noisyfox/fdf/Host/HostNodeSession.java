@@ -132,6 +132,7 @@ public class HostNodeSession extends Thread {
             }
             clean();
         }
+        mIsAlive = false;
         System.out.println("Node session died!");
     }
 
