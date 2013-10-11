@@ -53,6 +53,7 @@ public class HostSession extends RateRestriction {
     protected long userFileRestartOffset = 0;
 
     protected File userRnfrFile = null;
+    protected int userRnfrFileNode = -1;
 
     //noed session
     protected HostNodeSession[] userNodeSession;

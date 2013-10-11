@@ -1135,23 +1135,35 @@ public class HostServant extends Thread {
 
     private void handleRnfr() {
         mSession.userRnfrFile = null;
+        mSession.userRnfrFileNode = -1;
         Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
         if (!checkFileAccess(rp, FilePermission.OPERATION_FILE_RENAME_FROM)) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
             return;
         }
 
-        File f = rp.getFile();
-        if (f.exists()) {
-            mSession.userRnfrFile = f;
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            File f = rp.getFile();
+            if (f.exists()) {
+                mSession.userRnfrFile = f;
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+            }
         } else {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                nodeSession.handleRnfr(rp);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+            }
         }
     }
 
     private void handleRnto() {
-        if (mSession.userRnfrFile == null) {
+        if (mSession.userRnfrFile == null && mSession.userRnfrFileNode == -1) {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NEEDRNFR, ' ', "RNFR required first.");
         } else {
             Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
@@ -1160,13 +1172,30 @@ public class HostServant extends Thread {
                 return;
             }
 
-            File f = rp.getFile();
-            File from = mSession.userRnfrFile;
-            mSession.userRnfrFile = null;
-            if (from.renameTo(f)) {
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RENAMEOK, ' ', "Rename successful.");
-            } else {
+            int pathNode = mHost.getDirMapper().map(rp);
+            if (pathNode != mSession.userCurrentDirNode) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+                return;
+            }
+
+            if (pathNode == -1) {
+                File f = rp.getFile();
+                File from = mSession.userRnfrFile;
+                mSession.userRnfrFile = null;
+                if (from.renameTo(f)) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RENAMEOK, ' ', "Rename successful.");
+                } else {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+                }
+            } else {
+                try {
+                    mNodeController.chooseNode(pathNode);
+                    HostNodeSession nodeSession = mNodeController.getNodeSession();
+                    nodeSession.handleRnto(rp);
+                    mSession.userRnfrFileNode = -1;
+                } catch (IndexOutOfBoundsException ex) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+                }
             }
         }
     }

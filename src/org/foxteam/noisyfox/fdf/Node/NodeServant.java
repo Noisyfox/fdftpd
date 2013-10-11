@@ -309,6 +309,10 @@ public class NodeServant extends Thread {
                 handleRmd();
             } else if ("DELE".equals(mHostCmdArg.mCmd)) {
                 handleDele();
+            } else if ("RNFR".equals(mHostCmdArg.mCmd)) {
+                handleRnfr();
+            } else if ("RNTO".equals(mHostCmdArg.mCmd)) {
+                handleRnto();
             } else if ("QUIT".equals(mHostCmdArg.mCmd)) {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_GOODBYE, ' ', "Goodbye.");
                 break;
@@ -510,6 +514,43 @@ public class NodeServant extends Thread {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_DELEOK, ' ', "Delete operation successful.");
             } else {
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Delete operation failed.");
+            }
+        }
+    }
+
+    private void handleRnfr() {
+        mSession.userRnfrFile = null;
+
+        Path rp = mDirectoryMapper.map(Path.valueOf(mHostCmdArg.mArg));
+        if (rp == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+        } else {
+            File f = rp.getFile();
+            if (f.exists()) {
+                mSession.userRnfrFile = f;
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_RNFROK, ' ', "Ready for RNTO.");
+            } else {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+            }
+        }
+    }
+
+    private void handleRnto() {
+        if (mSession.userRnfrFile == null) {
+            FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_NEEDRNFR, ' ', "RNFR required first.");
+        } else {
+            Path rp = mDirectoryMapper.map(Path.valueOf(mHostCmdArg.mArg));
+            if (rp == null) {
+                FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+            } else {
+                File f = rp.getFile();
+                File from = mSession.userRnfrFile;
+                mSession.userRnfrFile = null;
+                if (from.renameTo(f)) {
+                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_RENAMEOK, ' ', "Rename successful.");
+                } else {
+                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+                }
             }
         }
     }

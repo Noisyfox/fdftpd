@@ -255,6 +255,35 @@ public class HostNodeSession extends Thread {
         }
     }
 
+    public void handleRnfr(Path path) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "RNFR " + path.getAbsolutePath());
+            if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "RNFR command failed.");
+            } else {
+                if (mNodeRespond.mStatus.mStatusCode == FtpCodes.FTP_RNFROK) {
+                    mHostServant.mSession.userRnfrFileNode = mConnector.mHostNodeDefinition.number;
+                }
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
+        }
+    }
+
+    public void handleRnto(Path path) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "RNTO " + path.getAbsolutePath());
+            if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "Rename failed.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
+        }
+    }
+
     public void handlePasv() {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
