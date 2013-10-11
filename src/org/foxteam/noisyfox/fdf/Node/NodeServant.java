@@ -325,6 +325,10 @@ public class NodeServant extends Thread {
             return;
         }
         Path fileP = Path.valueOf(val[0]);
+        Path mappedPath = mDirectoryMapper.map(fileP);
+        if (mappedPath != null) {
+            fileP = mappedPath;
+        }
         int pCode;
         try {
             pCode = Integer.parseInt(val[1]);
