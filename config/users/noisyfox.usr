@@ -1,0 +1,23 @@
+# username::password::uid::home::cmdsAllowed::cmdsDenied
+noisyfox::noisyfox::100::I:/ftptest/hosthome/::::SITE
+# default directory permission
+# if it's not specified, the defualt value is dr-x
+dr-x
+# default file permission
+# if it's not specified, the defualt value is -r--
+-r--
+# below are file permission definitions, inheritable and override-able
+# 表示该目录自身的权限
+drwx::I:/ftptest/hosthome/subftp1/::-
+# 表示该目录的所有子目录（不含该目录自身）的权限
+drwx::I:/ftptest/hosthome/subftp1/::*
+# 表示该目录的直接子目录（不含该目录自身）的权限
+drwx::I:/ftptest/hosthome/subftp1/::?
+# 表示该目录及其下所有子目录中文件的权限
+-rw-::I:/ftptest/hosthome/subftp1/::*
+# 表示该目录（不含子目录）中文件的权限
+-rw-::I:/ftptest/hosthome/subftp1/::?
+
+drwx::I:/ftptest/hosthome/subftp2/::-
+drwx::I:/ftptest/hosthome/subftp2/::*
+-rw-::I:/ftptest/hosthome/subftp2/::*
