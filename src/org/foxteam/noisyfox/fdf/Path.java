@@ -177,6 +177,10 @@ public class Path {
         return startCount == 0 && endCount == mLevels.length - 1;
     }
 
+    public Path getFather() {
+        return link("../");
+    }
+
     /**
      * 判断该路径是不是指定路径的子路径
      *

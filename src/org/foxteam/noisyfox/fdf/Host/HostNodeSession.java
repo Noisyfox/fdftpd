@@ -84,21 +84,23 @@ public class HostNodeSession extends Thread {
             System.out.println("Error exchanging information.");
             return false;
         }
-        //传输permission设置
-        LinkedList<Pair<Path, Integer>> dirPair = mHostServant.mSession.permission.getPermissionPairDir();
-        for (Pair<Path, Integer> p : dirPair) {
-            FtpUtil.ftpWriteStringRaw(mWriter, "PERD " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
-            if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
-                System.out.println("Error exchanging information.");
-                return false;
+        if (!mHostServant.mSession.userAnon) {
+            //传输permission设置
+            LinkedList<Pair<Path, Integer>> dirPair = mHostServant.mSession.permission.getPermissionPairDir();
+            for (Pair<Path, Integer> p : dirPair) {
+                FtpUtil.ftpWriteStringRaw(mWriter, "PERD " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
+                if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
+                    System.out.println("Error exchanging information.");
+                    return false;
+                }
             }
-        }
-        LinkedList<Pair<Path, Integer>> filePair = mHostServant.mSession.permission.getPermissionPairFile();
-        for (Pair<Path, Integer> p : filePair) {
-            FtpUtil.ftpWriteStringRaw(mWriter, "PERF " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
-            if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
-                System.out.println("Error exchanging information.");
-                return false;
+            LinkedList<Pair<Path, Integer>> filePair = mHostServant.mSession.permission.getPermissionPairFile();
+            for (Pair<Path, Integer> p : filePair) {
+                FtpUtil.ftpWriteStringRaw(mWriter, "PERF " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
+                if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
+                    System.out.println("Error exchanging information.");
+                    return false;
+                }
             }
         }
 
@@ -331,6 +333,20 @@ public class HostNodeSession extends Thread {
         }
     }
 
+    public String doUnique(Path path) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "UQUE " + path.getAbsolutePath());
+
+            if (readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.NODE_UNIQUEOK)) {
+                return mNodeRespond.mStatus.mStatusMsg;
+            } else {
+                return null;
+            }
+        }
+    }
+
     public void handlePasv() {
         synchronized (mWaitObj) {
             mCmdCallTimeStamp = System.currentTimeMillis();
@@ -442,6 +458,19 @@ public class HostNodeSession extends Thread {
             FtpUtil.ftpWriteStringRaw(mWriter, "RETR " + path.getAbsolutePath());
             if (!readStatus(true) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to send file.");
+            } else {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
+            }
+        }
+    }
+
+    public void handleStor(Path path, boolean isAppend) {
+        synchronized (mWaitObj) {
+            mCmdCallTimeStamp = System.currentTimeMillis();
+
+            FtpUtil.ftpWriteStringRaw(mWriter, "STOR " + path.getAbsolutePath() + "::" + (isAppend ? "1" : "0"));
+            if (!readStatus(true) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {
+                FtpUtil.ftpWriteStringCommon(mHostServant.mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to get file.");
             } else {
                 FtpUtil.ftpWriteStringCommon(mHostServant.mOut, mNodeRespond.mStatus.mStatusCode, ' ', mNodeRespond.mStatus.mStatusMsg);
             }

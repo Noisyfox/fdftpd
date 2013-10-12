@@ -97,5 +97,6 @@ public class FtpCodes {
     public static final int NODE_BRIDGEOK = 909;
     public static final int NODE_BADBRIDGE = 910;
     public static final int NODE_CHARSETOK = 911;
+    public static final int NODE_UNIQUEOK = 912;
 
 }

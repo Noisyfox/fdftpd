@@ -367,4 +367,15 @@ public class FtpUtil {
         return true;
     }
 
+    public static String getUniqueFileName(Path path) {
+        File f = path.getFile();
+        String p = path.getAbsolutePath();
+        int suffix = 1;
+        while (f.exists()) {
+            f = new File(p + "." + suffix);
+            suffix++;
+        }
+        return f.getName();
+    }
+
 }

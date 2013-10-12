@@ -20,6 +20,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class HostServant extends Thread {
     private static volatile AtomicInteger mNumClients = new AtomicInteger(0);
 
+    private FtpBridge.OnBridgeWorkFinishListener mBridgeFinishListener = new FtpBridge.OnBridgeWorkFinishListener() {
+        @Override
+        public void onWorkFinish() {
+            ioCloseConnection();
+            cleanPasv();
+            cleanPort();
+            mSession.userCurrentActivatedBridge = null;
+        }
+    };
+
     protected final Host mHost;
     protected final Tunables mTunables;
     protected final Socket mIncoming;
@@ -506,15 +516,7 @@ public class HostServant extends Thread {
             return;
         }
 
-        mSession.userCurrentActivatedBridge = new FtpBridge(listener, nodeSession.getNodeAddress(), new FtpBridge.OnBridgeWorkFinishListener() {
-            @Override
-            public void onWorkFinish() {
-                ioCloseConnection();
-                cleanPasv();
-                cleanPort();
-                mSession.userCurrentActivatedBridge = null;
-            }
-        });
+        mSession.userCurrentActivatedBridge = new FtpBridge(listener, nodeSession.getNodeAddress(), mBridgeFinishListener);
 
         //开始传输数据
         if (!ioOpenConnection("Here comes the directory listing.")) {
@@ -976,15 +978,7 @@ public class HostServant extends Thread {
             return;
         }
 
-        mSession.userCurrentActivatedBridge = new FtpBridge(listener, nodeSession.getNodeAddress(), new FtpBridge.OnBridgeWorkFinishListener() {
-            @Override
-            public void onWorkFinish() {
-                ioCloseConnection();
-                cleanPasv();
-                cleanPort();
-                mSession.userCurrentActivatedBridge = null;
-            }
-        });
+        mSession.userCurrentActivatedBridge = new FtpBridge(listener, nodeSession.getNodeAddress(), mBridgeFinishListener);
 
         //ascii模式则发送编码信息
         if (ascii) {
@@ -1055,19 +1049,16 @@ public class HostServant extends Thread {
                 //发送 offset 和 type 信息
                 if (!nodeSession.doRest(offset)) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
-                    mSession.userCurrentActivatedBridge.kill();
                     return;
                 }
                 if (!nodeSession.doType(ascii)) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
-                    mSession.userCurrentActivatedBridge.kill();
                     return;
                 }
                 //获取文件长度
                 long size = nodeSession.doSize(path);
                 if (size < 0) {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to read file.");
-                    mSession.userCurrentActivatedBridge.kill();
                     return;
                 }
 
@@ -1123,19 +1114,16 @@ public class HostServant extends Thread {
             //发送 offset 和 type 信息
             if (!pathNodeSession.doRest(offset)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
-                mSession.userCurrentActivatedBridge.kill();
                 return;
             }
             if (!pathNodeSession.doType(ascii)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
-                mSession.userCurrentActivatedBridge.kill();
                 return;
             }
             //获取文件长度
             long size = pathNodeSession.doSize(path);
             if (size < 0) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to read file.");
-                mSession.userCurrentActivatedBridge.kill();
                 return;
             }
 
@@ -1196,35 +1184,17 @@ public class HostServant extends Thread {
     }
 
     //***********************************************************************************************************************************
-    private void handleUploadCommon(boolean isAppend, boolean isUnique) {
-        if (!checkDataTransferOk()) {
-            return;
-        }
-
-        long fileOffset = mSession.userFileRestartOffset;
-        mSession.userFileRestartOffset = 0;
-
-        //获取真实路径
-        if (mSession.mFtpCmdArg.mArg.isEmpty()) {
-            mSession.mFtpCmdArg.mArg = "STOU";
-        }
-        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
-        int operate = (fileOffset != 0 || isAppend) ? FilePermission.OPERATION_FILE_WRITE : FilePermission.OPERATION_FILE_CREATE;
-        if (!checkFileAccess(rp, operate)) {
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
-            return;
-        }
-
-        File f = rp.getFile();
-        {
-            File nf = f;
-            int suffix = 1;
-            while (nf.exists() && isUnique) {//增加后缀避免重名
-                nf = new File(rp.getAbsolutePath() + "." + suffix);
-                suffix++;
+    private void handleUploadCommon(Path path, boolean isAppend, boolean isUnique, long offset, boolean ascii) {
+        if (isUnique) {
+            String uName = FtpUtil.getUniqueFileName(path);
+            if (uName == null) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_UPLOADFAIL, ' ', "Could not create file.");
+                return;
+            } else {
+                path = path.getFather().link(uName);
             }
-            f = nf;
         }
+        File f = path.getFile();
         RandomAccessFile raf;
         try {
             raf = new RandomAccessFile(f, "rw");
@@ -1235,8 +1205,8 @@ public class HostServant extends Thread {
         }
 
         try {
-            if (!isAppend && fileOffset != 0) {
-                raf.seek(fileOffset);
+            if (!isAppend && offset != 0) {
+                raf.seek(offset);
             } else if (isAppend) {
                 raf.seek(raf.length());
             } else {
@@ -1260,40 +1230,42 @@ public class HostServant extends Thread {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            return;
         }
 
         //接收数据
-        boolean transferSuccess = false;
+        boolean transferSuccess = true;
         boolean fileWriteSuccess = true;
-        try {
-            if (mSession.isAscii && mTunables.hostAsciiUploadEnabled) {
-                String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
-                String line;
+        if (ascii) {
+            String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码
+            String line;
+            try {
                 while ((line = mSession.userDataTransferReaderAscii.readLine()) != null) {
                     byte[] bytes = line.getBytes(charSet);
-                    transferSuccess = true;
-                    fileWriteSuccess = false;
-                    raf.write(bytes);
-                    transferSuccess = false;
-                    fileWriteSuccess = true;
+                    try {
+                        raf.write(bytes);
+                    } catch (IOException e) {
+                        fileWriteSuccess = false;
+                    }
                 }
-                transferSuccess = true;
-                fileWriteSuccess = true;
-            } else {
-                byte[] bytes = new byte[10240];
-                int size;
-                while ((size = mSession.userDataTransferReaderBinary.read(bytes)) != -1) {
-                    transferSuccess = true;
-                    fileWriteSuccess = false;
-                    raf.write(bytes, 0, size);
-                    transferSuccess = false;
-                    fileWriteSuccess = true;
-                }
-                transferSuccess = true;
-                fileWriteSuccess = true;
+            } catch (IOException e) {
+                transferSuccess = false;
             }
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } else {
+            byte[] bytes = new byte[10240];
+            int size;
+            try {
+                while ((size = mSession.userDataTransferReaderBinary.read(bytes)) != -1) {
+                    try {
+                        raf.write(bytes, 0, size);
+                    } catch (IOException e) {
+                        fileWriteSuccess = false;
+                    }
+                }
+            } catch (IOException e) {
+                transferSuccess = false;
+            }
         }
 
         if (!fileWriteSuccess) {
@@ -1310,8 +1282,257 @@ public class HostServant extends Thread {
         cleanPort();
         try {
             raf.close();
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void handleUploadHostNode(int node, Path path, boolean isAppend, boolean isUnique, long offset, boolean ascii) {
+        try {
+            mNodeController.chooseNode(node);
+            HostNodeSession nodeSession = mNodeController.getNodeSession();
+            if (!nodeSession.handleBridge(false, mHost.getHostAddress())) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                return;
+            }
+            if (nodeSession.mBridgePort == -1) {
+                return;
+            }
+            // bridge已建立
+            // 伪造port
+            cleanPort();
+            cleanPasv();
+            mSession.userPortSocketAddr = nodeSession.getNodeAddress();
+            mSession.userPortSocketPort = nodeSession.mBridgePort;
+
+            handleUploadCommon(path, isAppend, isUnique, offset, ascii);
+        } catch (IndexOutOfBoundsException ex) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+        }
+    }
+
+    private void handleUploadNodeHost(int node, Path path, boolean isAppend, boolean isUnique, long offset, boolean ascii) {
+        HostNodeSession nodeSession;
+        try {
+            mNodeController.chooseNode(node);
+            nodeSession = mNodeController.getNodeSession();
+        } catch (IndexOutOfBoundsException ex) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            return;
+        }
+
+        //建立本地桥
+        if (mSession.userCurrentActivatedBridge != null && !mSession.userCurrentActivatedBridge.isDead()) {
+            mSession.userCurrentActivatedBridge.kill();
+        }
+        ServerSocket listener = FtpUtil.openRandomPort();
+        if (listener == null) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            return;
+        }
+
+        mSession.userCurrentActivatedBridge = new FtpBridge(listener, nodeSession.getNodeAddress(), mBridgeFinishListener);
+
+        //ascii模式则发送编码信息
+        if (ascii) {
+            //通知编码
+            nodeSession.doCharset(mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset);
+        }
+        //发送 offset 和 type 信息
+        if (!nodeSession.doRest(offset)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            mSession.userCurrentActivatedBridge.kill();
+            return;
+        }
+        if (!nodeSession.doType(ascii)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            mSession.userCurrentActivatedBridge.kill();
+            return;
+        }
+        if (isUnique) {
+            String uName = nodeSession.doUnique(path);
+            if (uName == null) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_UPLOADFAIL, ' ', "Could not create file.");
+                mSession.userCurrentActivatedBridge.kill();
+                return;
+            } else {
+                path = path.getFather().link(uName);
+            }
+        }
+
+        File f = path.getFile();
+        String ioMsg;
+        if (isUnique) {
+            ioMsg = "FILE: " + f.getName();
+        } else {
+            ioMsg = "Ok to send data.";
+        }
+        if (!ioOpenConnection(ioMsg)) {
+            cleanPasv();
+            cleanPort();
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            mSession.userCurrentActivatedBridge.kill();
+            return;
+        }
+        String myAddr = mHost.getHostAddress();
+        String portArg = myAddr.replace(".", ",");
+        int portNum = listener.getLocalPort();
+        portArg += "," + (portNum >> 8) + "," + (portNum & 0xFF);
+        if (!nodeSession.doPort(portArg)) {
+            cleanPasv();
+            cleanPort();
+            mSession.userCurrentActivatedBridge.kill();
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            return;
+        }
+
+        mSession.userCurrentActivatedBridge.startForSending(mSession.userDataTransferReaderBinary);
+        nodeSession.handleStor(path, isAppend);
+    }
+
+    private void handleUploadNodeNode(int pathNode, int activeNode, Path path, boolean isAppend, boolean isUnique, long offset, boolean ascii) {
+        if (pathNode == activeNode) {
+            try {
+                mNodeController.chooseNode(pathNode);
+                HostNodeSession nodeSession = mNodeController.getNodeSession();
+                //ascii模式则发送编码信息
+                if (ascii) {
+                    //通知编码
+                    nodeSession.doCharset(mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset);
+                }
+                //发送 offset 和 type 信息
+                if (!nodeSession.doRest(offset)) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                    return;
+                }
+                if (!nodeSession.doType(ascii)) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                    return;
+                }
+                if (isUnique) {
+                    String uName = nodeSession.doUnique(path);
+                    if (uName == null) {
+                        FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_UPLOADFAIL, ' ', "Could not create file.");
+                        return;
+                    } else {
+                        path = path.getFather().link(uName);
+                    }
+                }
+                File f = path.getFile();
+                String ioMsg;
+                if (isUnique) {
+                    ioMsg = "FILE: " + f.getName();
+                } else {
+                    ioMsg = "Ok to send data.";
+                }
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DATACONN, ' ', ioMsg);
+
+                nodeSession.handleStor(path, isAppend);
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+            }
+        } else {
+            HostNodeSession pathNodeSession, activeNodeSession;
+            try {
+                mNodeController.chooseNode(pathNode);
+                pathNodeSession = mNodeController.getNodeSession();
+                mNodeController.chooseNode(activeNode);
+                activeNodeSession = mNodeController.getNodeSession();
+            } catch (IndexOutOfBoundsException ex) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                return;
+            }
+            if (!activeNodeSession.handleBridge(false, pathNodeSession.getNodeAddress())) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                return;
+            }
+
+            if (activeNodeSession.mBridgePort == -1) {
+                return;
+            }
+
+            String myAddr = pathNodeSession.getNodeAddress();
+            String portArg = myAddr.replace(".", ",");
+            int portNum = activeNodeSession.mBridgePort;
+            portArg += "," + (portNum >> 8) + "," + (portNum & 0xFF);
+            if (!pathNodeSession.doPort(portArg)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                return;
+            }
+            //ascii模式则发送编码信息
+            if (ascii) {
+                //通知编码
+                pathNodeSession.doCharset(mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset);
+            }
+            //发送 offset 和 type 信息
+            if (!pathNodeSession.doRest(offset)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                return;
+            }
+            if (!pathNodeSession.doType(ascii)) {
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
+                return;
+            }
+            if (isUnique) {
+                String uName = pathNodeSession.doUnique(path);
+                if (uName == null) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_UPLOADFAIL, ' ', "Could not create file.");
+                    mSession.userCurrentActivatedBridge.kill();
+                    return;
+                } else {
+                    path = path.getFather().link(uName);
+                }
+            }
+            File f = path.getFile();
+            String ioMsg;
+            if (isUnique) {
+                ioMsg = "FILE: " + f.getName();
+            } else {
+                ioMsg = "Ok to send data.";
+            }
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DATACONN, ' ', ioMsg);
+
+            pathNodeSession.handleStor(path, isAppend);
+        }
+    }
+
+    private void handleUpload(boolean isAppend, boolean isUnique) {
+        if (!checkDataTransferOk()) {
+            return;
+        }
+
+        boolean useAscii = mSession.isAscii && mTunables.hostAsciiUploadEnabled;
+
+        long fileOffset = mSession.userFileRestartOffset;
+        mSession.userFileRestartOffset = 0;
+        if (useAscii && fileOffset != 0) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "No support for resume of ASCII transfer.");
+            return;
+        }
+
+        //获取真实路径
+        if (mSession.mFtpCmdArg.mArg.isEmpty()) {
+            mSession.mFtpCmdArg.mArg = "STOU";
+        }
+        Path rp = FtpUtil.ftpGetRealPath(mSession.userHomeDir, mSession.userCurrentDir, Path.valueOf(mSession.mFtpCmdArg.mArg));
+        int operate = (fileOffset != 0 || isAppend) ? FilePermission.OPERATION_FILE_WRITE : FilePermission.OPERATION_FILE_CREATE;
+        if (!checkFileAccess(rp, operate)) {
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_NOPERM, ' ', "Permission denied.");
+            return;
+        }
+
+        int pathNode = mHost.getDirMapper().map(rp);
+        if (pathNode == -1) {
+            if (mSession.userTransformActivatedNode == -1) {
+                handleUploadCommon(rp, isAppend, isUnique, fileOffset, useAscii);
+            } else {
+                handleUploadHostNode(mSession.userTransformActivatedNode, rp, isAppend, isUnique, fileOffset, useAscii);
+            }
+        } else {
+            if (mSession.userTransformActivatedNode == -1) {
+                handleUploadNodeHost(pathNode, rp, isAppend, isUnique, fileOffset, useAscii);
+            } else {
+                handleUploadNodeNode(pathNode, mSession.userTransformActivatedNode, rp, isAppend, isUnique, fileOffset, useAscii);
+            }
         }
     }
     //***********************************************************************************************************************************
@@ -1694,7 +1915,7 @@ public class HostServant extends Thread {
                 handlePort();
             } else if ("STOR".equals(mSession.mFtpCmdArg.mCmd) && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonUploadEnabled || !mSession.userAnon)) {
-                handleUploadCommon(false, false);
+                handleUpload(false, false);
             } else if (("MKD".equals(mSession.mFtpCmdArg.mCmd) || "XMKD".equals(mSession.mFtpCmdArg.mCmd))
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonMkdirWriteEnabled || !mSession.userAnon)) {
@@ -1735,7 +1956,7 @@ public class HostServant extends Thread {
             } else if ("APPE".equals(mSession.mFtpCmdArg.mCmd)
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonOtherWriteEnabled || !mSession.userAnon)) {
-                handleUploadCommon(true, false);
+                handleUpload(true, false);
             } else if ("MDTM".equals(mSession.mFtpCmdArg.mCmd)) {
                 handleMdtm();
             } else if ("STRU".equals(mSession.mFtpCmdArg.mCmd)) {
@@ -1755,7 +1976,7 @@ public class HostServant extends Thread {
             } else if ("STOU".equals(mSession.mFtpCmdArg.mCmd)
                     && mTunables.hostWriteEnabled
                     && (mTunables.hostAnonUploadEnabled || !mSession.userAnon)) {
-                handleUploadCommon(false, true);
+                handleUpload(false, true);
             } else if ("ALLO".equals(mSession.mFtpCmdArg.mCmd)) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_ALLOOK, ' ', "ALLO command ignored.");
             } else if ("REIN".equals(mSession.mFtpCmdArg.mCmd)) {
