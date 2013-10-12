@@ -76,23 +76,23 @@ public class HostServant extends Thread {
         if (mSession.userDataTransferReaderAscii != null) try {
             mSession.userDataTransferReaderAscii.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
         if (mSession.userDataTransferReaderBinary != null) try {
             mSession.userDataTransferReaderBinary.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
         if (mSession.userDataTransferWriterAscii != null) mSession.userDataTransferWriterAscii.close();
         if (mSession.userDataTransferWriterBinary != null) try {
             mSession.userDataTransferWriterBinary.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
         if (mSession.userDataTransferSocket != null) try {
             mSession.userDataTransferSocket.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
 
         mSession.userDataTransferSocket = null;
@@ -119,7 +119,7 @@ public class HostServant extends Thread {
                 try {
                     tempSocket.close();
                 } catch (IOException e1) {
-                    e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                    e1.printStackTrace();
                 }
                 return false;
             }
@@ -302,7 +302,7 @@ public class HostServant extends Thread {
             try {
                 mSession.userPasvSocketServer.close();
             } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                e.printStackTrace();
             }
         }
         mSession.userPasvSocketServer = null;

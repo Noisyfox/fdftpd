@@ -85,7 +85,6 @@ public class NodeServant extends Thread {
 
         mMidwayStatusCode = FtpCodes.FTP_DATACONN;
         mMidwayStatusMsg = new Object[]{' ', msg};
-        //FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DATACONN, ' ', msg);
 
         return true;
     }
@@ -95,23 +94,23 @@ public class NodeServant extends Thread {
         if (mSession.userDataTransferReaderAscii != null) try {
             mSession.userDataTransferReaderAscii.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
         if (mSession.userDataTransferReaderBinary != null) try {
             mSession.userDataTransferReaderBinary.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
         if (mSession.userDataTransferWriterAscii != null) mSession.userDataTransferWriterAscii.close();
         if (mSession.userDataTransferWriterBinary != null) try {
             mSession.userDataTransferWriterBinary.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
         if (mSession.userDataTransferSocket != null) try {
             mSession.userDataTransferSocket.close();
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
 
         mSession.userDataTransferSocket = null;
@@ -136,11 +135,10 @@ public class NodeServant extends Thread {
             if (!mSession.userRemoteAddr.equals(clientAddr)) {
                 mMidwayStatusCode = FtpCodes.FTP_BADSENDCONN;
                 mMidwayStatusMsg = new Object[]{' ', "Security: Bad IP connecting."};
-                //FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Security: Bad IP connecting.");
                 try {
                     tempSocket.close();
                 } catch (IOException e1) {
-                    e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                    e1.printStackTrace();
                 }
                 return false;
             }
@@ -240,7 +238,7 @@ public class NodeServant extends Thread {
             try {
                 mSession.userPasvSocketServer.close();
             } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                e.printStackTrace();
             }
         }
         mSession.userPasvSocketServer = null;
@@ -285,9 +283,9 @@ public class NodeServant extends Thread {
                 handlePermission(true);
             } else if ("PERF".equals(mHostCmdArg.mCmd)) {
                 handlePermission(false);
-            } else if ("REVE".equals(mHostCmdArg)) {
+            } else if ("REVE".equals(mHostCmdArg.mCmd)) {
                 handleBridge(true);
-            } else if ("SEND".equals(mHostCmdArg)) {
+            } else if ("SEND".equals(mHostCmdArg.mCmd)) {
                 handleBridge(false);
             } else if ("CWD".equals(mHostCmdArg.mCmd)) {
                 handleCwd();
@@ -492,8 +490,11 @@ public class NodeServant extends Thread {
             }
             if (mTime >= 0) {
                 try {
-                    f.setLastModified(mTime);
-                    FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_MDTMOK, ' ', "File modification time set.");
+                    if (f.setLastModified(mTime)) {
+                        FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_MDTMOK, ' ', "File modification time set.");
+                    } else {
+                        FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not set file modification time.");
+                    }
                 } catch (Exception e) {
                     FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Could not set file modification time.");
                 }

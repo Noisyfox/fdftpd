@@ -60,7 +60,7 @@ public class HostNodeSession extends Thread {
     /**
      * 连接准备，主机和node进行必要的信息交换，并启动session至可使用状态
      *
-     * @param hostServant
+     * @param hostServant 该session所属的HostServant
      */
     public boolean prepareConnection(HostServant hostServant) {
         mHostServant = hostServant;

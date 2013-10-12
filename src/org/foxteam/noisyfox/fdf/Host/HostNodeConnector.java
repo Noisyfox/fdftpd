@@ -150,7 +150,7 @@ public class HostNodeConnector extends Thread {
                 ss = new ServerSocket(selectedPort);
                 break;
             } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                e.printStackTrace();
             }
         }
         //请求连接

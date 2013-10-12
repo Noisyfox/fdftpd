@@ -47,7 +47,7 @@ public class Host {
 
         try {
             InetAddress addr = InetAddress.getLocalHost();
-            mHostAddress = addr.getHostAddress().toString();
+            mHostAddress = addr.getHostAddress();
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }

@@ -219,7 +219,7 @@ public class Path {
     /**
      * 获取路径的相对性
      *
-     * @return
+     * @return 路径的相对性
      */
     public int getRelativity() {
         if (".".equals(mLevels[0])) {
