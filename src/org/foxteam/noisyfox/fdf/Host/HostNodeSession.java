@@ -180,7 +180,11 @@ public class HostNodeSession extends Thread {
 
             FtpUtil.ftpWriteStringRaw(mWriter, "CWD " + path.getAbsolutePath());
             if (readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_CWDOK)) {
-                mHostServant.mSession.userCurrentDirNode = mConnector.mHostNodeDefinition.number;
+                if (mHostServant.mSession.userAlwaysUseHost) {
+                    mHostServant.mSession.userCurrentDirNode = -1;
+                } else {
+                    mHostServant.mSession.userCurrentDirNode = mConnector.mHostNodeDefinition.number;
+                }
                 mHostServant.mSession.userCurrentDir = path;
             }
             if (mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK) {

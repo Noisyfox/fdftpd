@@ -51,6 +51,8 @@ public class Tunables {
     public boolean hostAnonOtherWriteEnabled = false;
     public boolean hostAnonDenyEmailEnabled = false;
     public String[] hostAnonDenyEmail = {};
+    public boolean hostAnonHostOnlyEmailEnabled = false;
+    public String[] hostAnonHostOnlyEmail = {};
     public long hostAnonTransferRateMax = 1024 * 1024 * 3;
 
     public final HashMap<String, UserDefinition> hostUserDefinition = new HashMap<String, UserDefinition>();
@@ -124,148 +126,160 @@ public class Tunables {
             return;
         }
 
-        if ("service_type".equals(key)) {
-            if ("HOST".equals(value)) {
-                isHost = true;
-            } else if ("NODE".equals(value)) {
-                isHost = false;
-            } else {
-                System.out.println("Bad service type \"" + value + "\", ignored.");
-            }
-        } else if (forceHost || isHost) {
-            if ("anonymous_enable".equals(key)) {
-                hostAnonEnabled = Boolean.parseBoolean(value);
-            } else if ("anon_home".equals(key)) {
-                hostAnonHome = Path.valueOf(value);
-            } else if ("anon_no_password".equals(key)) {
-                hostAnonNoPassword = Boolean.parseBoolean(value);
-            } else if ("write_enable".equals(key)) {
-                hostWriteEnabled = Boolean.parseBoolean(value);
-            } else if ("anon_upload_enable".equals(key)) {
-                hostAnonUploadEnabled = Boolean.parseBoolean(value);
-            } else if ("anon_mkdir_write_enable".equals(key)) {
-                hostAnonMkdirWriteEnabled = Boolean.parseBoolean(value);
-            } else if ("anon_other_write_enable".equals(key)) {
-                hostAnonOtherWriteEnabled = Boolean.parseBoolean(value);
-            } else if ("ascii_upload_enable".equals(key)) {
-                hostAsciiUploadEnabled = Boolean.parseBoolean(value);
-            } else if ("ascii_download_enable".equals(key)) {
-                hostAsciiDownloadEnabled = Boolean.parseBoolean(value);
-            } else if ("ftpd_banner".equals(key)) {
-                hostFtpdBanner = value;
-            } else if ("deny_email_enable".equals(key)) {
-                hostAnonDenyEmailEnabled = Boolean.parseBoolean(value);
-            } else if ("banned_email_file".equals(key)) {
-                String[] emails = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
-                if (emails != null) {
-                    hostAnonDenyEmail = emails;
+        try {
+            if ("service_type".equals(key)) {
+                if ("HOST".equals(value)) {
+                    isHost = true;
+                } else if ("NODE".equals(value)) {
+                    isHost = false;
+                } else {
+                    System.out.println("Bad service type \"" + value + "\", ignored.");
                 }
-            } else if ("ascii_charset".equals(key)) {
-                hostDefaultTransferCharset = value;
-            } else if ("remote_charset".equals(key)) {
-                hostRemoteCharset = value;
-            } else if ("cmds_allowed".equals(key)) {
-                hostCmdsAllowed = value.split(",");
-            } else if ("cmds_denied".equals(key)) {
-                hostCmdsDenied = value.split(",");
-            } else if ("max_clients".equals(key)) {
-                hostMaxClients = Integer.parseInt(value);
-            } else if ("anon_max_rate".equals(key)) {
-                hostAnonTransferRateMax = Long.parseLong(value);
-            } else if ("user_max_rate".equals(key)) {
-                hostTransferRateMax = Long.parseLong(value);
-            } else if ("user_defs".equals(key)) {
-                Path userDefDirPath = Path.valueOf(value);
-                File userDefDirFile = userDefDirPath.getFile();
-                if (userDefDirFile.isDirectory()) {
-                    String[] userDefs = userDefDirFile.list(new FilenameFilter() {
-                        @Override
-                        public boolean accept(File dir, String name) {
-                            return name.endsWith(".usr");
+            } else if (forceHost || isHost) {
+                if ("anonymous_enable".equals(key)) {
+                    hostAnonEnabled = Boolean.parseBoolean(value);
+                } else if ("anon_home".equals(key)) {
+                    hostAnonHome = Path.valueOf(value);
+                } else if ("anon_no_password".equals(key)) {
+                    hostAnonNoPassword = Boolean.parseBoolean(value);
+                } else if ("write_enable".equals(key)) {
+                    hostWriteEnabled = Boolean.parseBoolean(value);
+                } else if ("anon_upload_enable".equals(key)) {
+                    hostAnonUploadEnabled = Boolean.parseBoolean(value);
+                } else if ("anon_mkdir_write_enable".equals(key)) {
+                    hostAnonMkdirWriteEnabled = Boolean.parseBoolean(value);
+                } else if ("anon_other_write_enable".equals(key)) {
+                    hostAnonOtherWriteEnabled = Boolean.parseBoolean(value);
+                } else if ("ascii_upload_enable".equals(key)) {
+                    hostAsciiUploadEnabled = Boolean.parseBoolean(value);
+                } else if ("ascii_download_enable".equals(key)) {
+                    hostAsciiDownloadEnabled = Boolean.parseBoolean(value);
+                } else if ("ftpd_banner".equals(key)) {
+                    hostFtpdBanner = value;
+                } else if ("deny_email_enable".equals(key)) {
+                    hostAnonDenyEmailEnabled = Boolean.parseBoolean(value);
+                } else if ("banned_email_file".equals(key)) {
+                    String[] emails = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
+                    if (emails != null) {
+                        hostAnonDenyEmail = emails;
+                    }
+                } else if ("anon_always_host_enable".equals(key)) {
+                    hostAnonHostOnlyEmailEnabled = Boolean.parseBoolean(value);
+                } else if ("always_host_email_file".equals(key)) {
+                    String[] emails = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
+                    if (emails != null) {
+                        hostAnonHostOnlyEmail = emails;
+                    }
+                } else if ("ascii_charset".equals(key)) {
+                    hostDefaultTransferCharset = value;
+                } else if ("remote_charset".equals(key)) {
+                    hostRemoteCharset = value;
+                } else if ("cmds_allowed".equals(key)) {
+                    hostCmdsAllowed = value.split(",");
+                } else if ("cmds_denied".equals(key)) {
+                    hostCmdsDenied = value.split(",");
+                } else if ("max_clients".equals(key)) {
+                    hostMaxClients = Integer.parseInt(value);
+                } else if ("anon_max_rate".equals(key)) {
+                    hostAnonTransferRateMax = Long.parseLong(value);
+                } else if ("user_max_rate".equals(key)) {
+                    hostTransferRateMax = Long.parseLong(value);
+                } else if ("user_defs".equals(key)) {
+                    Path userDefDirPath = Path.valueOf(value);
+                    File userDefDirFile = userDefDirPath.getFile();
+                    if (userDefDirFile.isDirectory()) {
+                        String[] userDefs = userDefDirFile.list(new FilenameFilter() {
+                            @Override
+                            public boolean accept(File dir, String name) {
+                                return name.endsWith(".usr");
+                            }
+                        });
+                        for (String userDef : userDefs) {
+                            Path userDefPath = userDefDirPath.link(userDef);
+                            UserDefinition ud = new UserDefinition();
+                            try {
+                                ud.loadFromFile(userDefPath);
+                                hostUserDefinition.put(ud.name, ud);
+                                System.out.println("User \"" + ud.name + "\" added!");
+                            } catch (RuntimeException e) {
+                                System.out.println("Illegal user definition file \"" + userDefPath.getAbsolutePath() + "\", ignored.");
+                            }
                         }
-                    });
-                    for (String userDef : userDefs) {
-                        Path userDefPath = userDefDirPath.link(userDef);
-                        UserDefinition ud = new UserDefinition();
+                    } else {
+                        System.out.println("Illegal user definition directory \"" + value + "\", ignored.");
+                    }
+                } else if ("host_node_count".equals(key)) {
+                    int count = Integer.parseInt(value);
+                    if (count > 0) {
+                        hostNodes = new HostNodeDefinition[count];
+                    }
+                } else if (key.startsWith("host_node_address")) {
+                    int number = FtpUtil.getNodeNumber("host_node_address", key);
+                    if (number < 0 || number > hostNodes.length - 1) {
+                        System.out.println("Illegal node number, ignored.");
+                    } else {
+                        if (hostNodes[number] == null) {
+                            hostNodes[number] = new HostNodeDefinition();
+                            hostNodes[number].number = number;
+                        }
+                        hostNodes[number].adderss = value;
+                    }
+                } else if (key.startsWith("host_node_port")) {
+                    int number = FtpUtil.getNodeNumber("host_node_port", key);
+                    if (number < 0 || number > hostNodes.length - 1) {
+                        System.out.println("Illegal node number, ignored.");
+                    } else {
+                        if (hostNodes[number] == null) {
+                            hostNodes[number] = new HostNodeDefinition();
+                            hostNodes[number].number = number;
+                        }
+                        hostNodes[number].port = Integer.parseInt(value);
+                    }
+                } else if (key.startsWith("host_node_cert")) {
+                    int number = FtpUtil.getNodeNumber("host_node_cert", key);
+                    if (number < 0 || number > hostNodes.length - 1) {
+                        System.out.println("Illegal node number, ignored.");
+                    } else {
+                        if (hostNodes[number] == null) {
+                            hostNodes[number] = new HostNodeDefinition();
+                            hostNodes[number].number = number;
+                        }
                         try {
-                            ud.loadFromFile(userDefPath);
-                            hostUserDefinition.put(ud.name, ud);
-                            System.out.println("User \"" + ud.name + "\" added!");
-                        } catch (RuntimeException e) {
-                            System.out.println("Illegal user definition file \"" + userDefPath.getAbsolutePath() + "\", ignored.");
+                            hostNodes[number].cert = new FtpCertification(value);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            System.out.println("Error loading cert file \"" + value + "\".");
                         }
                     }
                 } else {
-                    System.out.println("Illegal user definition directory \"" + value + "\", ignored.");
-                }
-            } else if ("host_node_count".equals(key)) {
-                int count = Integer.parseInt(value);
-                if (count > 0) {
-                    hostNodes = new HostNodeDefinition[count];
-                }
-            } else if (key.startsWith("host_node_address")) {
-                int number = FtpUtil.getNodeNumber("host_node_address", key);
-                if (number < 0 || number > hostNodes.length - 1) {
-                    System.out.println("Illegal node number, ignored.");
-                } else {
-                    if (hostNodes[number] == null) {
-                        hostNodes[number] = new HostNodeDefinition();
-                        hostNodes[number].number = number;
-                    }
-                    hostNodes[number].adderss = value;
-                }
-            } else if (key.startsWith("host_node_port")) {
-                int number = FtpUtil.getNodeNumber("host_node_port", key);
-                if (number < 0 || number > hostNodes.length - 1) {
-                    System.out.println("Illegal node number, ignored.");
-                } else {
-                    if (hostNodes[number] == null) {
-                        hostNodes[number] = new HostNodeDefinition();
-                        hostNodes[number].number = number;
-                    }
-                    hostNodes[number].port = Integer.parseInt(value);
-                }
-            } else if (key.startsWith("host_node_cert")) {
-                int number = FtpUtil.getNodeNumber("host_node_cert", key);
-                if (number < 0 || number > hostNodes.length - 1) {
-                    System.out.println("Illegal node number, ignored.");
-                } else {
-                    if (hostNodes[number] == null) {
-                        hostNodes[number] = new HostNodeDefinition();
-                        hostNodes[number].number = number;
-                    }
-                    try {
-                        hostNodes[number].cert = new FtpCertification(value);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        System.out.println("Error loading cert file \"" + value + "\".");
-                    }
+                    System.out.println("Unknown config \"" + key + "\", ignored.");
                 }
             } else {
-                System.out.println("Unknown config \"" + key + "\", ignored.");
-            }
-        } else {
-            if ("certificate_file".equals(key)) {
-                nodeCertFilePath = value;
-            } else if ("remote_port".equals(key)) {
-                nodeControlPort = Integer.parseInt(value);
-            } else if ("dir_map_file".equals(key)) {
-                String[] maps = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
-                if (maps != null) {
-                    for (String s : maps) {
-                        int firstDoubleColonIndex = s.indexOf("::");
-                        if (firstDoubleColonIndex == -1 || firstDoubleColonIndex >= s.length() - 2) {
-                            System.out.println("Illegal dir map \"" + s + "\", ignored.");
-                            continue;
+                if ("certificate_file".equals(key)) {
+                    nodeCertFilePath = value;
+                } else if ("remote_port".equals(key)) {
+                    nodeControlPort = Integer.parseInt(value);
+                } else if ("dir_map_file".equals(key)) {
+                    String[] maps = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
+                    if (maps != null) {
+                        for (String s : maps) {
+                            int firstDoubleColonIndex = s.indexOf("::");
+                            if (firstDoubleColonIndex == -1 || firstDoubleColonIndex >= s.length() - 2) {
+                                System.out.println("Illegal dir map \"" + s + "\", ignored.");
+                                continue;
+                            }
+                            String from = s.substring(0, firstDoubleColonIndex).trim();
+                            String to = s.substring(firstDoubleColonIndex + 2).trim();
+                            nodeDirectoryMap.add(new Pair<String, String>(from, to));
                         }
-                        String from = s.substring(0, firstDoubleColonIndex).trim();
-                        String to = s.substring(firstDoubleColonIndex + 2).trim();
-                        nodeDirectoryMap.add(new Pair<String, String>(from, to));
                     }
+                } else {
+                    System.out.println("Unknown config \"" + key + "\", ignored.");
                 }
-            } else {
-                System.out.println("Unknown config \"" + key + "\", ignored.");
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            System.out.println("Error parse config \"" + line + "\", ignored.");
         }
     }
 

@@ -1734,6 +1734,14 @@ public class HostServant extends Thread {
             }
             mSession.userHomeDir = mTunables.hostAnonHome; //加载anon设置
             mSession.userCurrentDir = mSession.userHomeDir;
+            if (mTunables.hostAnonHostOnlyEmailEnabled) {
+                for (String s : mTunables.hostAnonHostOnlyEmail) {
+                    if (s.equals(mSession.mFtpCmdArg.mArg)) {
+                        mSession.userAlwaysUseHost = true;
+                        break;
+                    }
+                }
+            }
             return true;
         }
         UserDefinition userDef = mTunables.hostUserDefinition.get(mSession.user);
