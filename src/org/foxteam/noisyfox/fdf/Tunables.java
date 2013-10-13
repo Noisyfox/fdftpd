@@ -16,6 +16,7 @@ import java.util.Vector;
 public class Tunables {
     public boolean isHost = true;
     public int serverControlPort = 2120;//控制端口
+    public Path serverHome = Path.valueOf("/");
 
     //*************************************************************
     //host  config
@@ -162,14 +163,16 @@ public class Tunables {
                 } else if ("deny_email_enable".equals(key)) {
                     hostAnonDenyEmailEnabled = Boolean.parseBoolean(value);
                 } else if ("banned_email_file".equals(key)) {
-                    String[] emails = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
+                    Path path = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
+                    String[] emails = FtpUtil.loadLinesFromFile(path, true);
                     if (emails != null) {
                         hostAnonDenyEmail = emails;
                     }
                 } else if ("anon_always_host_enable".equals(key)) {
                     hostAnonHostOnlyEmailEnabled = Boolean.parseBoolean(value);
                 } else if ("always_host_email_file".equals(key)) {
-                    String[] emails = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
+                    Path path = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
+                    String[] emails = FtpUtil.loadLinesFromFile(path, true);
                     if (emails != null) {
                         hostAnonHostOnlyEmail = emails;
                     }
@@ -188,7 +191,7 @@ public class Tunables {
                 } else if ("user_max_rate".equals(key)) {
                     hostTransferRateMax = Long.parseLong(value);
                 } else if ("user_defs".equals(key)) {
-                    Path userDefDirPath = Path.valueOf(value);
+                    Path userDefDirPath = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
                     File userDefDirFile = userDefDirPath.getFile();
                     if (userDefDirFile.isDirectory()) {
                         String[] userDefs = userDefDirFile.list(new FilenameFilter() {
@@ -248,7 +251,8 @@ public class Tunables {
                             hostNodes[number].number = number;
                         }
                         try {
-                            hostNodes[number].cert = new FtpCertification(value);
+                            Path path = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
+                            hostNodes[number].cert = new FtpCertification(path.getFile());
                         } catch (IOException e) {
                             e.printStackTrace();
                             System.out.println("Error loading cert file \"" + value + "\".");
@@ -259,11 +263,13 @@ public class Tunables {
                 }
             } else {
                 if ("certificate_file".equals(key)) {
-                    nodeCertFilePath = value;
+                    Path path = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
+                    nodeCertFilePath = path.getAbsolutePath();
                 } else if ("remote_port".equals(key)) {
                     nodeControlPort = Integer.parseInt(value);
                 } else if ("dir_map_file".equals(key)) {
-                    String[] maps = FtpUtil.loadLinesFromFile(Path.valueOf(value), true);
+                    Path path = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
+                    String[] maps = FtpUtil.loadLinesFromFile(path, true);
                     if (maps != null) {
                         for (String s : maps) {
                             int firstDoubleColonIndex = s.indexOf("::");

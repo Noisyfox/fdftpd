@@ -22,7 +22,7 @@ import java.util.Random;
 public class FtpMain extends Thread implements Server {
     public static final String FDF_VER = "0.1";
     public static final int IPPORT_RESERVED = 1024;
-    public static final String CONFIG_DEFAULT_PATH = "fdftpd.conf";
+    public static final String CONFIG_DEFAULT_PATH = "./config/fdftpd.conf";
 
     public static void main(String args[]) {
         Tunables tunables = loadTunables(args);
@@ -39,13 +39,18 @@ public class FtpMain extends Thread implements Server {
 
     private static Tunables loadTunables(String args[]) {
         Tunables tunables = new Tunables();
+        String serverHome = System.getProperty("fdftpd.home");
+        if (serverHome != null) {
+            tunables.serverHome = Path.valueOf(serverHome);
+        }
 
-        tunables.loadFromFile(CONFIG_DEFAULT_PATH);
+        tunables.loadFromFile(FtpUtil.ftpGetRealPath(tunables.serverHome, tunables.serverHome, Path.valueOf(CONFIG_DEFAULT_PATH)).getAbsolutePath());
         for (String arg : args) {
             if (arg.startsWith("-")) {//设置
                 tunables.parseSetting(arg.substring(1), false);
             } else {//配置文件
-                tunables.loadFromFile(arg);
+                Path path = FtpUtil.ftpGetRealPath(tunables.serverHome, tunables.serverHome, Path.valueOf(arg));
+                tunables.loadFromFile(path.getAbsolutePath());
             }
         }
 

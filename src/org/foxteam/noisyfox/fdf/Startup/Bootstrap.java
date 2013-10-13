@@ -37,15 +37,15 @@ public class Bootstrap {
         }
     }
 
-    Server ftftpdServer = null;
+    Server fdftpdServer = null;
 
     void startServer(String args[]) {
-        ftftpdServer = new FtpMain();
-        ftftpdServer.startServer(args);
+        fdftpdServer = new FtpMain();
+        fdftpdServer.startServer(args);
     }
 
     void stopServer(String args[]) {
-        ftftpdServer = new FtpMain();
-        ftftpdServer.stopServer(args);
+        fdftpdServer = new FtpMain();
+        fdftpdServer.stopServer(args);
     }
 }

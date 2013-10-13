@@ -66,7 +66,7 @@ public class Path {
         //合并输入路径中的".."和"."
         int point = -1, first = -1;
         for (int i = 0; i < levels.length; i++) {
-            if (!levels[i].isEmpty() && !".".equals(levels[i])) {
+            if (!levels[i].isEmpty() && !".".equals(levels[i]) && !"~".equals(levels[i])) {
                 if ("..".equals(levels[i])) {
                     if (first != -1) {
                         endCount--;
