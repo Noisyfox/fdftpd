@@ -3,3 +3,4 @@ out/
 .idea/
 *.iml
 *~
+build/bin/fdftpd.jar
