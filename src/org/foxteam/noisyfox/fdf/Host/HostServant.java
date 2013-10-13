@@ -1552,8 +1552,19 @@ public class HostServant extends Thread {
     private void handleOpts() {
         mSession.mFtpCmdArg.mArg = mSession.mFtpCmdArg.mArg.toUpperCase();
         if ("UTF8 ON".equals(mSession.mFtpCmdArg.mArg)) {
-            mSession.isUTF8Required = true;
-            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_OPTSOK, ' ', "Always in UTF8 mode.");
+            try {
+                PrintWriter tmpWriter = new PrintWriter(new OutputStreamWriter(mIncoming.getOutputStream(), "UTF-8"), true);
+                BufferedReader tmpReader = new BufferedReader(new InputStreamReader(mIncoming.getInputStream(), "UTF-8"));
+
+                mOut = tmpWriter;
+                mIn = tmpReader;
+
+                mSession.isUTF8Required = true;
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_OPTSOK, ' ', "Switch to UTF8 mode.");
+            } catch (IOException e) {
+                e.printStackTrace();
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADOPTS, ' ', "Switch to UTF8 mode failed.");
+            }
         } else {
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADOPTS, ' ', "Option not understood.");
         }
