@@ -176,6 +176,8 @@ public class Tunables {
                     if (emails != null) {
                         hostAnonHostOnlyEmail = emails;
                     }
+                } else if ("host_listen_port".equals(key)) {
+                    hostListenPort = Integer.parseInt(value);
                 } else if ("ascii_charset".equals(key)) {
                     hostDefaultTransferCharset = value;
                 } else if ("remote_charset".equals(key)) {
