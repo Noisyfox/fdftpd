@@ -36,6 +36,7 @@ public class Tunables {
 
     public String hostFtpdBanner = "";
 
+    public boolean hostPortAddressCheck = true;
     public boolean hostPasvAddressCheck = true;
     public boolean hostPasvEnabled = true;
     public boolean hostPortEnabled = true;
@@ -194,6 +195,8 @@ public class Tunables {
                     hostAnonTransferRateMax = Long.parseLong(value);
                 } else if ("user_max_rate".equals(key)) {
                     hostTransferRateMax = Long.parseLong(value);
+                } else if ("port_address_check".equals(key)) {
+                    hostPortAddressCheck = Boolean.parseBoolean(value);
                 } else if ("pasv_address_check".equals(key)) {
                     hostPasvAddressCheck = Boolean.parseBoolean(value);
                 } else if ("user_defs".equals(key)) {

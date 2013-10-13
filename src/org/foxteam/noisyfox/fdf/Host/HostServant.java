@@ -400,7 +400,8 @@ public class HostServant extends Thread {
             * 1) Reject requests not connecting to the control socket IP
             * 2) Reject connects to privileged ports
             */
-            if (!sockAddr.equals(mSession.userRemoteAddr) || sockPort < FtpMain.IPPORT_RESERVED) {
+            if ((mTunables.hostPortAddressCheck && !sockAddr.equals(mSession.userRemoteAddr))
+                    || sockPort < FtpMain.IPPORT_RESERVED) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
                 return;
             }
