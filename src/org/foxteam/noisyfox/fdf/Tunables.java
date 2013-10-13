@@ -15,6 +15,7 @@ import java.util.Vector;
  */
 public class Tunables {
     public boolean isHost = true;
+    public int serverControlPort = 2120;//控制端口
 
     //*************************************************************
     //host  config
@@ -135,6 +136,8 @@ public class Tunables {
                 } else {
                     System.out.println("Bad service type \"" + value + "\", ignored.");
                 }
+            } else if ("server_control_port".equals(key)) {
+                serverControlPort = Integer.parseInt(value);
             } else if (forceHost || isHost) {
                 if ("anonymous_enable".equals(key)) {
                     hostAnonEnabled = Boolean.parseBoolean(value);

@@ -2,6 +2,7 @@ package org.foxteam.noisyfox.fdf.Node;
 
 import org.foxteam.noisyfox.fdf.FtpCertification;
 import org.foxteam.noisyfox.fdf.Pair;
+import org.foxteam.noisyfox.fdf.Server;
 import org.foxteam.noisyfox.fdf.Tunables;
 
 import java.io.IOException;
@@ -15,7 +16,7 @@ import java.net.Socket;
  * Time: 下午7:56
  * To change this template use File | Settings | File Templates.
  */
-public class Node {
+public class Node implements Server {
 
     private final Tunables mTunables;
 
@@ -71,5 +72,15 @@ public class Node {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void startServer(String[] args) {
+        nodeStart();
+    }
+
+    @Override
+    public void stopServer(String[] args) {
+        System.exit(0);
     }
 }

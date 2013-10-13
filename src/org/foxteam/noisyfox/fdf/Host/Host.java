@@ -1,5 +1,6 @@
 package org.foxteam.noisyfox.fdf.Host;
 
+import org.foxteam.noisyfox.fdf.Server;
 import org.foxteam.noisyfox.fdf.Tunables;
 
 import java.io.IOException;
@@ -16,7 +17,7 @@ import java.util.HashMap;
  * Time: 下午9:49
  * To change this template use File | Settings | File Templates.
  */
-public class Host {
+public class Host implements Server {
 
     private final Tunables mTunables;
     private final HostDirectoryMapper mDirMapper;
@@ -80,5 +81,15 @@ public class Host {
 
     public String getHostAddress() {
         return mHostAddress;
+    }
+
+    @Override
+    public void startServer(String[] args) {
+        hostStart();
+    }
+
+    @Override
+    public void stopServer(String[] args) {
+        System.exit(0);
     }
 }
