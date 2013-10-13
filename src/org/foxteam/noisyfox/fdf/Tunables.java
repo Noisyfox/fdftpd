@@ -36,6 +36,7 @@ public class Tunables {
 
     public String hostFtpdBanner = "";
 
+    public boolean hostPasvAddressCheck = true;
     public boolean hostPasvEnabled = true;
     public boolean hostPortEnabled = true;
     public boolean hostWriteEnabled = false;
@@ -65,6 +66,7 @@ public class Tunables {
     //node config
     public int nodeControlPort = 22;
 
+    public boolean nodePasvAddressCheck = true;
     public String nodeCertFilePath = "node.cert";
     public Vector<Pair<String, String>> nodeDirectoryMap = new Vector<Pair<String, String>>();
 
@@ -192,6 +194,8 @@ public class Tunables {
                     hostAnonTransferRateMax = Long.parseLong(value);
                 } else if ("user_max_rate".equals(key)) {
                     hostTransferRateMax = Long.parseLong(value);
+                } else if ("pasv_address_check".equals(key)) {
+                    hostPasvAddressCheck = Boolean.parseBoolean(value);
                 } else if ("user_defs".equals(key)) {
                     Path userDefDirPath = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
                     File userDefDirFile = userDefDirPath.getFile();
@@ -269,6 +273,8 @@ public class Tunables {
                     nodeCertFilePath = path.getAbsolutePath();
                 } else if ("remote_port".equals(key)) {
                     nodeControlPort = Integer.parseInt(value);
+                } else if ("pasv_address_check".equals(key)) {
+                    nodePasvAddressCheck = Boolean.parseBoolean(value);
                 } else if ("dir_map_file".equals(key)) {
                     Path path = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
                     String[] maps = FtpUtil.loadLinesFromFile(path, true);

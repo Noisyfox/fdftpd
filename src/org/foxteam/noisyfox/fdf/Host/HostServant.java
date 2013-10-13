@@ -112,16 +112,18 @@ public class HostServant extends Thread {
             tempSocket = mSession.userPasvSocketServer.accept();
             mSession.userPasvSocketServer.close();
             mSession.userPasvSocketServer = null;
-            //检查是否是来自当前客户端的连接
-            String clientAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
-            if (!mSession.userRemoteAddr.equals(clientAddr)) {
-                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Security: Bad IP connecting.");
-                try {
-                    tempSocket.close();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
+            if (mTunables.hostPasvAddressCheck) {
+                //检查是否是来自当前客户端的连接
+                String clientAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
+                if (!mSession.userRemoteAddr.equals(clientAddr)) {
+                    FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Security: Bad IP connecting.");
+                    try {
+                        tempSocket.close();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                    return false;
                 }
-                return false;
             }
             long maxRate = mSession.userAnon ? mTunables.hostAnonTransferRateMax : mTunables.hostTransferRateMax;
             String charSet = mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset; //使用默认编码

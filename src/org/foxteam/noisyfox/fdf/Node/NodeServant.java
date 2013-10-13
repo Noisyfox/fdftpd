@@ -130,17 +130,19 @@ public class NodeServant extends Thread {
             tempSocket = mSession.userPasvSocketServer.accept();
             mSession.userPasvSocketServer.close();
             mSession.userPasvSocketServer = null;
-            //检查是否是来自当前客户端的连接
-            String clientAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
-            if (!mSession.userRemoteAddr.equals(clientAddr)) {
-                mMidwayStatusCode = FtpCodes.FTP_BADSENDCONN;
-                mMidwayStatusMsg = new Object[]{' ', "Security: Bad IP connecting."};
-                try {
-                    tempSocket.close();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
+            if (mNodeCenter.mTunables.nodePasvAddressCheck) {
+                //检查是否是来自当前客户端的连接
+                String clientAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
+                if (!mSession.userRemoteAddr.equals(clientAddr)) {
+                    mMidwayStatusCode = FtpCodes.FTP_BADSENDCONN;
+                    mMidwayStatusMsg = new Object[]{' ', "Security: Bad IP connecting."};
+                    try {
+                        tempSocket.close();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                    return false;
                 }
-                return false;
             }
             long maxRate = mSession.userAnon ? mNodeCenter.mTunables.hostAnonTransferRateMax : mNodeCenter.mTunables.hostTransferRateMax;
             String charSet = mSession.asciiCharset; //使用默认编码
