@@ -25,8 +25,9 @@ public class FtpUtil {
         sb.append(status);
         sb.append(sep);
         sb.append(str.replace('\n', '\0').replace("\377", "\377\377"));
+        sb.append("\r\n");
         String s = sb.toString();
-        out.println(s);
+        out.print(s);
         out.flush();
 
         System.out.println("Result:" + s);
@@ -34,7 +35,7 @@ public class FtpUtil {
 
     public static void ftpWriteStringRaw(PrintWriter out, String str) {
         str = str.replace('\n', '\0').replace("\377", "\377\377");
-        out.println(str);
+        out.print(str + "\r\n");
         out.flush();
 
         System.out.println("Result:" + str);
@@ -47,8 +48,9 @@ public class FtpUtil {
         for (Object s1 : ftpMsg) {
             sb.append(s1.toString().replace('\n', '\0').replace("\377", "\377\377"));
         }
+        sb.append("\r\n");
         String s = sb.toString();
-        out.println(s);
+        out.print(s);
         out.flush();
 
         System.out.println("Result:" + s);
