@@ -61,14 +61,14 @@ FDFTPD_HOME=/usr/local/$NAME
 # Directory for per-instance configuration files and webapps
 FDFTPD_BASE=/usr/local/$NAME
 # Use the Java security manager? (yes/no)
-#TOMCAT_SECURITY=no
+#FDFTPD_SECURITY=no
 # Default Java options
 # Set java.awt.headless=true if JAVA_OPTS is not set so the
 # Xalan XSL transformer can work without X11 display on JDK 1.4+
 # It also looks like the default heap size of 64M is not enough for most cases
 # so the maximum heap size is set to 128M
 if [ -z "$JAVA_OPTS" ]; then
- JAVA_OPTS="-Djava.awt.headless=true -Xmx800m -XX:PermSize=128M -XX:MaxNewSize=256m -XX:MaxPermSize=256m"
+ JAVA_OPTS="-Djava.awt.headless=true -Xmx300m -XX:PermSize=128M -XX:MaxNewSize=256m -XX:MaxPermSize=256m"
 fi
 # End of variables that can be overwritten in $DEFAULT
 # overwrite settings from default file
@@ -79,12 +79,12 @@ if [ ! -f "$FDFTPD_HOME/bin/fdftpd.jar" ]; then
  log_failure_msg "$NAME is not installed"
  exit 1
 fi
-POLICY_CACHE="$FDFTPD_BASE/work/fdftpd.policy"
+#POLICY_CACHE="$FDFTPD_BASE/work/fdftpd.policy"
 if [ -z "$FDFTPD_TMPDIR" ]; then
  FDFTPD_TMPDIR="$JVM_TMP"
 fi
 SECURITY=""
-if [ "$TOMCAT_SECURITY" = "yes" ]; then
+if [ "$FDFTPD_SECURITY" = "yes" ]; then
  SECURITY="-security"
 fi
 # Define other required variables
@@ -104,7 +104,7 @@ fdftpd_sh() {
  fi
  # Define the command to run Tomcat's fdftpd.sh as a daemon
  # set -a tells sh to export assigned variables to spawned shells.
- TOMCAT_SH="set -a; JAVA_HOME=\"$JAVA_HOME\"; source \"$DEFAULT\"; \
+ FDFTPD_SH="set -a; JAVA_HOME=\"$JAVA_HOME\"; source \"$DEFAULT\"; \
   FDFTPD_HOME=\"$FDFTPD_HOME\"; \
   FDFTPD_BASE=\"$FDFTPD_BASE\"; \
   JAVA_OPTS=\"$JAVA_OPTS\"; \
@@ -114,15 +114,15 @@ fdftpd_sh() {
   cd \"$FDFTPD_BASE\"; \
   \"$FDFTPD_SH\" $@"
  if [ "$AUTHBIND" = "yes" -a "$1" = "start" ]; then
-  TOMCAT_SH="'$TOMCAT_SH'"
+  FDFTPD_SH="'$FDFTPD_SH'"
  fi
  # Run the fdftpd.sh script as a daemon
  set +e
  touch "$FDFTPD_PID" "$FDFTPD_BASE"/logs/fdftpd.out
- chown $TOMCAT_USER "$FDFTPD_PID" "$FDFTPD_BASE"/logs/fdftpd.out
- start-stop-daemon --start -b -u "$TOMCAT_USER" -g "$TOMCAT_GROUP" \
-  -c "$TOMCAT_USER" -d "$FDFTPD_TMPDIR" \
-  -x /bin/bash -- -c "$AUTHBIND_COMMAND $TOMCAT_SH"
+ chown $FDFTPD_USER "$FDFTPD_PID" "$FDFTPD_BASE"/logs/fdftpd.out
+ start-stop-daemon --start -b -u "$FDFTPD_USER" -g "$FDFTPD_GROUP" \
+  -c "$FDFTPD_USER" -d "$FDFTPD_TMPDIR" \
+  -x /bin/bash -- -c "$AUTHBIND_COMMAND $FDFTPD_SH"
  status="$?"
  set +a -e
  return $status
@@ -133,32 +133,32 @@ case "$1" in
   log_failure_msg "no JDK found - please set JAVA_HOME"
   exit 1
  fi
- if [ ! -d "$FDFTPD_BASE/conf" ]; then
+ if [ ! -d "$FDFTPD_BASE/config" ]; then
   log_failure_msg "invalid FDFTPD_BASE: $FDFTPD_BASE"
   exit 1
  fi
  log_daemon_msg "Starting $DESC" "$NAME"
  if start-stop-daemon --test --start --pidfile "$FDFTPD_PID" \
-  --user $TOMCAT_USER --exec "$JAVA_HOME/bin/java" \
+  --user $FDFTPD_USER --exec "$JAVA_HOME/bin/java" \
   >/dev/null; then
   # Regenerate POLICY_CACHE file
-  umask 022
-  echo "// AUTO-GENERATED FILE from /etc/tomcat7/policy.d/" \
-   > "$POLICY_CACHE"
-  echo ""  >> "$POLICY_CACHE"
-  cat $FDFTPD_BASE/conf/*.policy \
-   >> "$POLICY_CACHE"
+  #umask 022
+  #echo "// AUTO-GENERATED FILE from /etc/tomcat7/policy.d/" \
+  # > "$POLICY_CACHE"
+  #echo ""  >> "$POLICY_CACHE"
+  #cat $FDFTPD_BASE/config/*.policy \
+  # >> "$POLICY_CACHE"
   # Remove / recreate JVM_TMP directory
   rm -rf "$JVM_TMP"
   mkdir -p "$JVM_TMP" || {
    log_failure_msg "could not create JVM temporary directory"
    exit 1
   }
-  chown $TOMCAT_USER "$JVM_TMP"
+  chown $FDFTPD_USER "$JVM_TMP"
   fdftpd_sh start $SECURITY
   sleep 5
          if start-stop-daemon --test --start --pidfile "$FDFTPD_PID" \
-   --user $TOMCAT_USER --exec "$JAVA_HOME/bin/java" \
+   --user $FDFTPD_USER --exec "$JAVA_HOME/bin/java" \
    >/dev/null; then
    if [ -f "$FDFTPD_PID" ]; then
     rm -f "$FDFTPD_PID"
@@ -177,7 +177,7 @@ case "$1" in
  set +e
  if [ -f "$FDFTPD_PID" ]; then
   start-stop-daemon --stop --pidfile "$FDFTPD_PID" \
-   --user "$TOMCAT_USER" \
+   --user "$FDFTPD_USER" \
    --retry=TERM/20/KILL/5 >/dev/null
   if [ $? -eq 1 ]; then
    log_progress_msg "$DESC is not running but pid file exists, cleaning up"
@@ -197,7 +197,7 @@ case "$1" in
    status)
  set +e
  start-stop-daemon --test --start --pidfile "$FDFTPD_PID" \
-  --user $TOMCAT_USER --exec "$JAVA_HOME/bin/java" \
+  --user $FDFTPD_USER --exec "$JAVA_HOME/bin/java" \
   >/dev/null 2>&1
  if [ "$?" = "0" ]; then
   if [ -f "$FDFTPD_PID" ]; then
@@ -221,7 +221,7 @@ case "$1" in
  ;;
   try-restart)
         if start-stop-daemon --test --start --pidfile "$FDFTPD_PID" \
-  --user $TOMCAT_USER --exec "$JAVA_HOME/bin/java" \
+  --user $FDFTPD_USER --exec "$JAVA_HOME/bin/java" \
   >/dev/null; then
   $0 start
  fi
