@@ -80,7 +80,7 @@ rem                       address=%JPDA_ADDRESS%,server=y,suspend=%JPDA_SUSPEND%
 rem
 rem   LOGGING_CONFIG  (Optional) Override Tomcat's logging config file
 rem                   Example (all one line)
-rem                   set LOGGING_CONFIG="-Djava.util.logging.config.file=%FDFTPD_BASE%\conf\logging.properties"
+rem                   set LOGGING_CONFIG="-Djava.util.logging.config.file=%FDFTPD_BASE%\config\logging.properties"
 rem
 rem   LOGGING_MANAGER (Optional) Override Tomcat's logging manager
 rem                   Example (all one line)
@@ -167,15 +167,15 @@ set "FDFTPD_TMPDIR=%FDFTPD_BASE%\temp"
 
 if not "%LOGGING_CONFIG%" == "" goto noJuliConfig
 set LOGGING_CONFIG=-Dnop
-if not exist "%FDFTPD_BASE%\conf\logging.properties" goto noJuliConfig
-set LOGGING_CONFIG=-Djava.util.logging.config.file="%FDFTPD_BASE%\conf\logging.properties"
+if not exist "%FDFTPD_BASE%\config\logging.properties" goto noJuliConfig
+set LOGGING_CONFIG=-Djava.util.logging.config.file="%FDFTPD_BASE%\config\logging.properties"
 :noJuliConfig
 set JAVA_OPTS=%JAVA_OPTS% %LOGGING_CONFIG%
 
 if not "%LOGGING_MANAGER%" == "" goto noJuliManager
 set LOGGING_MANAGER=-Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
 :noJuliManager
-set JAVA_OPTS=%JAVA_OPTS% %LOGGING_MANAGER%
+rem set JAVA_OPTS=%JAVA_OPTS% %LOGGING_MANAGER%
 
 rem ----- Execute The Requested Command ---------------------------------------
 
@@ -242,7 +242,7 @@ set DEBUG_OPTS=-sourcepath "%FDFTPD_HOME%\..\..\java"
 if not ""%1"" == ""-security"" goto execCmd
 shift
 echo Using Security Manager
-set "SECURITY_POLICY_FILE=%FDFTPD_BASE%\conf\fdftpd.policy"
+set "SECURITY_POLICY_FILE=%FDFTPD_BASE%\config\fdftpd.policy"
 goto execCmd
 
 :doRun
@@ -250,7 +250,7 @@ shift
 if not ""%1"" == ""-security"" goto execCmd
 shift
 echo Using Security Manager
-set "SECURITY_POLICY_FILE=%FDFTPD_BASE%\conf\fdftpd.policy"
+set "SECURITY_POLICY_FILE=%FDFTPD_BASE%\config\fdftpd.policy"
 goto execCmd
 
 :doStart
@@ -265,7 +265,7 @@ set _EXECJAVA=start %_RUNJAVA%
 if not ""%1"" == ""-security"" goto execCmd
 shift
 echo Using Security Manager
-set "SECURITY_POLICY_FILE=%FDFTPD_BASE%\conf\fdftpd.policy"
+set "SECURITY_POLICY_FILE=%FDFTPD_BASE%\config\fdftpd.policy"
 goto execCmd
 
 :doStop

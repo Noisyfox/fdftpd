@@ -88,7 +88,7 @@
 #
 #   LOGGING_CONFIG  (Optional) Override Tomcat's logging config file
 #                   Example (all one line)
-#                   LOGGING_CONFIG="-Djava.util.logging.config.file=$FDFTPD_BASE/conf/logging.properties"
+#                   LOGGING_CONFIG="-Djava.util.logging.config.file=$FDFTPD_BASE/config/logging.properties"
 #
 #   LOGGING_MANAGER (Optional) Override Tomcat's logging manager
 #                   Example (all one line)
@@ -211,19 +211,19 @@ fi
 
 # Set juli LogManager config file if it is present and an override has not been issued
 if [ -z "$LOGGING_CONFIG" ]; then
-  if [ -r "$FDFTPD_BASE"/conf/logging.properties ]; then
-    LOGGING_CONFIG="-Djava.util.logging.config.file=$FDFTPD_BASE/conf/logging.properties"
+  if [ -r "$FDFTPD_BASE"/config/logging.properties ]; then
+    LOGGING_CONFIG="-Djava.util.logging.config.file=$FDFTPD_BASE/config/logging.properties"
   else
     # Bugzilla 45585
     LOGGING_CONFIG="-Dnop"
   fi
 fi
 
-if [ -z "$LOGGING_MANAGER" ]; then
-  JAVA_OPTS="$JAVA_OPTS -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager"
-else
-  JAVA_OPTS="$JAVA_OPTS $LOGGING_MANAGER"
-fi
+#if [ -z "$LOGGING_MANAGER" ]; then
+#  JAVA_OPTS="$JAVA_OPTS -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager"
+#else
+#  JAVA_OPTS="$JAVA_OPTS $LOGGING_MANAGER"
+#fi
 
 # Uncomment the following line to make the umask available when using the
 # org.apache.fdftpd.security.SecurityListener
@@ -279,7 +279,7 @@ if [ "$1" = "debug" ] ; then
         -Djava.endorsed.dirs="$JAVA_ENDORSED_DIRS" -classpath "$CLASSPATH" \
         -sourcepath "$FDFTPD_HOME"/../../java \
         -Djava.security.manager \
-        -Djava.security.policy=="$FDFTPD_BASE"/conf/fdftpd.policy \
+        -Djava.security.policy=="$FDFTPD_BASE"/config/fdftpd.policy \
         -Dfdftpd.base="$FDFTPD_BASE" \
         -Dfdftpd.home="$FDFTPD_HOME" \
         -Djava.io.tmpdir="$FDFTPD_TMPDIR" \
@@ -306,7 +306,7 @@ elif [ "$1" = "run" ]; then
     eval exec \"$_RUNJAVA\" \"$LOGGING_CONFIG\" $JAVA_OPTS $FDFTPD_OPTS \
       -Djava.endorsed.dirs=\"$JAVA_ENDORSED_DIRS\" -classpath \"$CLASSPATH\" \
       -Djava.security.manager \
-      -Djava.security.policy==\"$FDFTPD_BASE/conf/fdftpd.policy\" \
+      -Djava.security.policy==\"$FDFTPD_BASE/config/fdftpd.policy\" \
       -Dfdftpd.base=\"$FDFTPD_BASE\" \
       -Dfdftpd.home=\"$FDFTPD_HOME\" \
       -Djava.io.tmpdir=\"$FDFTPD_TMPDIR\" \
@@ -370,7 +370,7 @@ elif [ "$1" = "start" ] ; then
     eval \"$_RUNJAVA\" \"$LOGGING_CONFIG\" $JAVA_OPTS $FDFTPD_OPTS \
       -Djava.endorsed.dirs=\"$JAVA_ENDORSED_DIRS\" -classpath \"$CLASSPATH\" \
       -Djava.security.manager \
-      -Djava.security.policy==\"$FDFTPD_BASE/conf/fdftpd.policy\" \
+      -Djava.security.policy==\"$FDFTPD_BASE/config/fdftpd.policy\" \
       -Dfdftpd.base=\"$FDFTPD_BASE\" \
       -Dfdftpd.home=\"$FDFTPD_HOME\" \
       -Djava.io.tmpdir=\"$FDFTPD_TMPDIR\" \
