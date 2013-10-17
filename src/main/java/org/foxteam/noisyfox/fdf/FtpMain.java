@@ -2,6 +2,8 @@ package org.foxteam.noisyfox.fdf;
 
 import org.foxteam.noisyfox.fdf.Host.Host;
 import org.foxteam.noisyfox.fdf.Node.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,6 +22,7 @@ import java.util.Random;
  * To change this template use File | Settings | File Templates.
  */
 public class FtpMain extends Thread implements Server {
+    private static final Logger log = LoggerFactory.getLogger(FtpMain.class);
     public static final String FDF_VER = "0.1";
     public static final int IPPORT_RESERVED = 1024;
     public static final String CONFIG_DEFAULT_PATH = "./config/fdftpd.conf";
@@ -68,7 +71,7 @@ public class FtpMain extends Thread implements Server {
         } else {
             fdServer.startServer(null);
         }
-        System.out.println("Server stopped!");
+        log.info("Server stopped!");
     }
 
     @Override
@@ -83,7 +86,7 @@ public class FtpMain extends Thread implements Server {
         start();
         await(tunables.serverControlPort);
         fdServer.stopServer(null);
-        System.out.println("Server exit!");
+        log.info("Server exit!");
     }
 
     @Override
@@ -96,9 +99,9 @@ public class FtpMain extends Thread implements Server {
             stream.flush();
             stream.close();
             socket.close();
-            System.out.println("The server was successfully shut down.");
+            log.info("The server was successfully shut down.");
         } catch (IOException e) {
-            System.out.println("Error. The server has not been started.");
+            log.info("Error. The server has not been started.");
         }
     }
 
@@ -108,8 +111,8 @@ public class FtpMain extends Thread implements Server {
         try {
             serverSocket = new ServerSocket(port, 1, InetAddress.getByName("127.0.0.1"));
         } catch (IOException e) {
-            System.err.println("FtpMain.await: create[" + port + "]: " + e);
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
+            log.error("FtpMain.await: create[{}]: {}", port, e);
             System.exit(1);
         }
 
@@ -123,11 +126,10 @@ public class FtpMain extends Thread implements Server {
                 socket.setSoTimeout(10 * 1000); // Ten seconds
                 stream = socket.getInputStream();
             } catch (AccessControlException ace) {
-                System.err.println("FtpMain.accept security exception: " + ace.getMessage());
+                log.error("FtpMain.accept security exception", ace);
                 continue;
             } catch (IOException e) {
-                System.err.println("FtpMain.await: accept: " + e);
-                e.printStackTrace();
+                log.error("FtpMain.await: accept", e);
                 System.exit(1);
             }
 
@@ -143,8 +145,7 @@ public class FtpMain extends Thread implements Server {
                 try {
                     ch = stream.read();
                 } catch (IOException e) {
-                    System.err.println("FtpMain.await: read: " + e);
-                    e.printStackTrace();
+                    log.error("FtpMain.await: read", e);
                     ch = -1;
                 }
                 if (ch < 32) // Control character or EOF terminates loop
@@ -161,7 +162,7 @@ public class FtpMain extends Thread implements Server {
             boolean match = command.toString().equals(shutdown);
             if (match) {
                 break;
-            } else System.err.println("FtpMain.await: Invalid command '" + command.toString() + "' received");
+            } else log.error("FtpMain.await: Invalid command '{}' received", command.toString());
         }
         // Close the server socket and return
         try {

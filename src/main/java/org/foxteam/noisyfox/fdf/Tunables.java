@@ -1,6 +1,8 @@
 package org.foxteam.noisyfox.fdf;
 
 import org.foxteam.noisyfox.fdf.Host.HostNodeDefinition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.HashMap;
@@ -14,6 +16,7 @@ import java.util.Vector;
  * To change this template use File | Settings | File Templates.
  */
 public class Tunables {
+    private static final Logger log = LoggerFactory.getLogger(Tunables.class);
     public boolean isHost = true;
     public int serverControlPort = 2120;//控制端口
     public Path serverHome = Path.valueOf("/");
@@ -77,12 +80,12 @@ public class Tunables {
         try {
             br = new BufferedReader(new InputStreamReader(new FileInputStream(f)));
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            System.out.println("Can't open config file \"" + filePath + "\" for reading! Ignored.");
+            log.error(e.getMessage(), e);
+            log.error("Can't open config file \"{}\" for reading! Ignored.", filePath);
             return;
         }
 
-        System.out.println("Config file \"" + filePath + "\" opened for reading.");
+        log.info("Config file \"{}\" opened for reading.", filePath);
 
         String cfgLine;
         try {
@@ -95,12 +98,12 @@ public class Tunables {
                 parseSetting(cfgLine, false);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         } finally {
             try {
                 br.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
         }
 
@@ -119,7 +122,7 @@ public class Tunables {
         {
             int firstEqualsIndex = line.indexOf('=');
             if (firstEqualsIndex == -1 || firstEqualsIndex + 1 >= line.length()) {
-                System.out.println("Error parsing line \"" + line + "\", ignored.");
+                log.error("Error parsing line \"{}\", ignored.", line);
                 return;
             } else {
                 key = line.substring(0, firstEqualsIndex).trim();
@@ -138,7 +141,7 @@ public class Tunables {
                 } else if ("NODE".equals(value)) {
                     isHost = false;
                 } else {
-                    System.out.println("Bad service type \"" + value + "\", ignored.");
+                    log.error("Bad service type \"{}\", ignored.", value);
                 }
             } else if ("server_control_port".equals(key)) {
                 serverControlPort = Integer.parseInt(value);
@@ -215,13 +218,13 @@ public class Tunables {
                             try {
                                 ud.loadFromFile(userDefPath);
                                 hostUserDefinition.put(ud.name, ud);
-                                System.out.println("User \"" + ud.name + "\" added!");
+                                log.info("User \"{}\" added!", ud.name);
                             } catch (RuntimeException e) {
-                                System.out.println("Illegal user definition file \"" + userDefPath.getAbsolutePath() + "\", ignored.");
+                                log.error("Illegal user definition file \"{}\", ignored.", userDefPath.getAbsolutePath());
                             }
                         }
                     } else {
-                        System.out.println("Illegal user definition directory \"" + value + "\", ignored.");
+                        log.error("Illegal user definition directory \"{}\", ignored.", value);
                     }
                 } else if ("host_node_count".equals(key)) {
                     int count = Integer.parseInt(value);
@@ -231,7 +234,7 @@ public class Tunables {
                 } else if (key.startsWith("host_node_address")) {
                     int number = FtpUtil.getNodeNumber("host_node_address", key);
                     if (number < 0 || number > hostNodes.length - 1) {
-                        System.out.println("Illegal node number, ignored.");
+                        log.error("Illegal node number, ignored.");
                     } else {
                         if (hostNodes[number] == null) {
                             hostNodes[number] = new HostNodeDefinition();
@@ -242,7 +245,7 @@ public class Tunables {
                 } else if (key.startsWith("host_node_port")) {
                     int number = FtpUtil.getNodeNumber("host_node_port", key);
                     if (number < 0 || number > hostNodes.length - 1) {
-                        System.out.println("Illegal node number, ignored.");
+                        log.error("Illegal node number, ignored.");
                     } else {
                         if (hostNodes[number] == null) {
                             hostNodes[number] = new HostNodeDefinition();
@@ -253,7 +256,7 @@ public class Tunables {
                 } else if (key.startsWith("host_node_cert")) {
                     int number = FtpUtil.getNodeNumber("host_node_cert", key);
                     if (number < 0 || number > hostNodes.length - 1) {
-                        System.out.println("Illegal node number, ignored.");
+                        log.error("Illegal node number, ignored.");
                     } else {
                         if (hostNodes[number] == null) {
                             hostNodes[number] = new HostNodeDefinition();
@@ -263,12 +266,12 @@ public class Tunables {
                             Path path = FtpUtil.ftpGetRealPath(serverHome, serverHome, Path.valueOf(value));
                             hostNodes[number].cert = new FtpCertification(path.getFile());
                         } catch (IOException e) {
-                            e.printStackTrace();
-                            System.out.println("Error loading cert file \"" + value + "\".");
+                            log.error(e.getMessage(), e);
+                            log.error("Error loading cert file \"{}\".", value);
                         }
                     }
                 } else {
-                    System.out.println("Unknown config \"" + key + "\", ignored.");
+                    log.error("Unknown config \"{}\", ignored.", key);
                 }
             } else {
                 if ("certificate_file".equals(key)) {
@@ -285,7 +288,7 @@ public class Tunables {
                         for (String s : maps) {
                             int firstDoubleColonIndex = s.indexOf("::");
                             if (firstDoubleColonIndex == -1 || firstDoubleColonIndex >= s.length() - 2) {
-                                System.out.println("Illegal dir map \"" + s + "\", ignored.");
+                                log.error("Illegal dir map \"{}\", ignored.", s);
                                 continue;
                             }
                             String from = s.substring(0, firstDoubleColonIndex).trim();
@@ -294,12 +297,12 @@ public class Tunables {
                         }
                     }
                 } else {
-                    System.out.println("Unknown config \"" + key + "\", ignored.");
+                    log.error("Unknown config \"{}\", ignored.", key);
                 }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
-            System.out.println("Error parse config \"" + line + "\", ignored.");
+            log.error(ex.getMessage(), ex);
+            log.error("Error parse config \"{}\", ignored.", line);
         }
     }
 

@@ -2,6 +2,8 @@ package org.foxteam.noisyfox.fdf.Host;
 
 import org.foxteam.noisyfox.fdf.Server;
 import org.foxteam.noisyfox.fdf.Tunables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -18,6 +20,7 @@ import java.util.HashMap;
  * To change this template use File | Settings | File Templates.
  */
 public class Host implements Server {
+    private static final Logger log = LoggerFactory.getLogger(Host.class);
 
     private final Tunables mTunables;
     private final HostDirectoryMapper mDirMapper;
@@ -30,7 +33,7 @@ public class Host implements Server {
     }
 
     public void hostStart() {
-        System.out.println("Starting node connector.");
+        log.info("Starting node connector.");
         for (HostNodeDefinition hnd : mTunables.hostNodes) {
             if (mNodeConnectorMap.containsKey(hnd.number)) {
                 throw new IllegalStateException("Unable to start more than one node connector that have the same number!");
@@ -40,7 +43,7 @@ public class Host implements Server {
                 connector.start();
             }
         }
-        System.out.println("Wait 5 seconds before start listening.");
+        log.info("Wait 5 seconds before start listening.");
         try {
             Thread.sleep(5000);
         } catch (InterruptedException ignored) {
@@ -50,10 +53,10 @@ public class Host implements Server {
             InetAddress addr = InetAddress.getLocalHost();
             mHostAddress = addr.getHostAddress();
         } catch (UnknownHostException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
 
-        System.out.println("Ftp server started!");
+        log.info("Ftp server started!");
         try {
             ServerSocket s = new ServerSocket(mTunables.hostListenPort);
             while (true) {
@@ -62,7 +65,7 @@ public class Host implements Server {
                 servant.start();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
 
     }

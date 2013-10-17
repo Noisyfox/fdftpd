@@ -2,6 +2,8 @@ package org.foxteam.noisyfox.fdf.Node;
 
 import org.foxteam.noisyfox.fdf.Pair;
 import org.foxteam.noisyfox.fdf.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -14,6 +16,7 @@ import java.util.LinkedList;
  * To change this template use File | Settings | File Templates.
  */
 public class NodeDirectoryMapper {
+    private static final Logger log = LoggerFactory.getLogger(NodeCenter.class);
     private final LinkedList<Pair<Path, Path>> mPathPairs = new LinkedList<Pair<Path, Path>>();
     private final PathNode mRootNode = new PathNode();
 
@@ -23,7 +26,7 @@ public class NodeDirectoryMapper {
         if (!pNode.isFullPath() || !pDummy.isFullPath()
                 || pNode.getRelativity() != Path.RELA_ROOT
                 || pDummy.getRelativity() != Path.RELA_ROOT) {
-            System.out.printf("Illegal map path:\"" + nodePath + "\"->\"" + dummyPath + "\"");
+            log.error("Illegal map path:\"{}\"->\"{}\"", nodePath, dummyPath);
             return;
         }
         Pair<Path, Path> pathPair = new Pair<Path, Path>(pNode, pDummy);

@@ -4,6 +4,8 @@ import org.foxteam.noisyfox.fdf.FtpCertification;
 import org.foxteam.noisyfox.fdf.Pair;
 import org.foxteam.noisyfox.fdf.Server;
 import org.foxteam.noisyfox.fdf.Tunables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -17,6 +19,7 @@ import java.net.Socket;
  * To change this template use File | Settings | File Templates.
  */
 public class Node implements Server {
+    private static final Logger log = LoggerFactory.getLogger(Node.class);
 
     private final Tunables mTunables;
 
@@ -31,12 +34,12 @@ public class Node implements Server {
         //load node specific config
         //load certificate
         FtpCertification cert;
-        System.out.println("Loading certification file: " + mTunables.nodeCertFilePath);
+        log.info("Loading certification file: {}", mTunables.nodeCertFilePath);
         try {
             cert = new FtpCertification(mTunables.nodeCertFilePath);
         } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Load certification file failed!");
+            log.error(e.getMessage(), e);
+            log.error("Load certification file failed!");
             return;
         }
         //load database/prepare filesystem
@@ -46,31 +49,31 @@ public class Node implements Server {
         }
 
         //waiting for host to connect
-        System.out.println("Waiting for host to connect");
+        log.info("Waiting for host to connect");
         try {
             ServerSocket s = new ServerSocket(mTunables.nodeControlPort);
             while (true) {
                 Socket incoming = s.accept();
                 NodeCenter center = new NodeCenter(mDirectoryMapper, cert, mTunables, incoming);
-                System.out.println("Node session start!");
+                log.info("Node session start!");
                 try {
                     center.startNode();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.error(e.getMessage(), e);
                 } finally {
                     center.tryDoClean();
                 }
-                System.out.println("Node session exit!");
+                log.error("Node session exit!");
                 // Oops! Seems it's not a connection from Host or connection lost
 
                 try {
                     incoming.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error(e.getMessage(), e);
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
     }
 

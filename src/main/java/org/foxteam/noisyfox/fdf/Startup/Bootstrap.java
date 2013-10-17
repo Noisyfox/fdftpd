@@ -2,6 +2,8 @@ package org.foxteam.noisyfox.fdf.Startup;
 
 import org.foxteam.noisyfox.fdf.FtpMain;
 import org.foxteam.noisyfox.fdf.Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -13,6 +15,8 @@ import java.util.Arrays;
  * To change this template use File | Settings | File Templates.
  */
 public class Bootstrap {
+    private static final Logger log = LoggerFactory.getLogger(Bootstrap.class);
+
     private static Bootstrap daemon = null;
 
     public static void main(String args[]) {
@@ -33,7 +37,7 @@ public class Bootstrap {
         } else if ("stop".equals(command)) {
             daemon.stopServer(newArgs);
         } else {
-            System.out.println("Bootstrap: command \"" + command + "\" does not exist.");
+            log.error("Bootstrap: command \"{}\" does not exist.", command);
         }
     }
 

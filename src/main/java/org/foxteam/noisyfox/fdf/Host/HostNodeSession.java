@@ -1,6 +1,8 @@
 package org.foxteam.noisyfox.fdf.Host;
 
 import org.foxteam.noisyfox.fdf.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.Socket;
@@ -14,6 +16,7 @@ import java.util.LinkedList;
  * To change this template use File | Settings | File Templates.
  */
 public class HostNodeSession extends Thread {
+    private static final Logger log = LoggerFactory.getLogger(HostNodeSession.class);
     private final Object mWaitObj = new Object();
     private final Socket mSocket;
     private final PrintWriter mWriter;
@@ -67,21 +70,21 @@ public class HostNodeSession extends Thread {
         //告知登录用户名
         FtpUtil.ftpWriteStringRaw(mWriter, "UNAME " + mHostServant.mSession.user);
         if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
-            System.out.println("Error exchanging information.");
+            log.error("Error exchanging information.");
             return false;
         }
         //告知是否是匿名用户
         if (mHostServant.mSession.userAnon) {
             FtpUtil.ftpWriteStringRaw(mWriter, "ANON");
             if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
-                System.out.println("Error exchanging information.");
+                log.error("Error exchanging information.");
                 return false;
             }
         }
         //告知客户端地址
         FtpUtil.ftpWriteStringRaw(mWriter, "RADDR " + mHostServant.mSession.userRemoteAddr);
         if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
-            System.out.println("Error exchanging information.");
+            log.error("Error exchanging information.");
             return false;
         }
         if (!mHostServant.mSession.userAnon) {
@@ -90,7 +93,7 @@ public class HostNodeSession extends Thread {
             for (Pair<Path, Integer> p : dirPair) {
                 FtpUtil.ftpWriteStringRaw(mWriter, "PERD " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
                 if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
-                    System.out.println("Error exchanging information.");
+                    log.error("Error exchanging information.");
                     return false;
                 }
             }
@@ -98,7 +101,7 @@ public class HostNodeSession extends Thread {
             for (Pair<Path, Integer> p : filePair) {
                 FtpUtil.ftpWriteStringRaw(mWriter, "PERF " + p.getValue1().getAbsolutePath() + "::" + p.getValue2());
                 if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.HOST_INFOOK)) {
-                    System.out.println("Error exchanging information.");
+                    log.error("Error exchanging information.");
                     return false;
                 }
             }
@@ -111,7 +114,7 @@ public class HostNodeSession extends Thread {
 
     @Override
     public void run() {
-        System.out.println("Node session created!");
+        log.info("Node session created!");
         synchronized (mWaitObj) {//这个线程用来发送心跳包
             mIsAlive = true;
             mCmdCallTimeStamp = System.currentTimeMillis();
@@ -135,7 +138,7 @@ public class HostNodeSession extends Thread {
             clean();
         }
         mIsAlive = false;
-        System.out.println("Node session died!");
+        log.info("Node session died!");
     }
 
     private void clean() {
@@ -153,11 +156,11 @@ public class HostNodeSession extends Thread {
 
             while (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_GOODBYE)) {
                 if (tryCount < 4) {
-                    System.out.println("Error killing node session. Try again.");
+                    log.error("Error killing node session. Try again.");
                     tryCount++;
                     FtpUtil.ftpWriteStringRaw(mWriter, "QUIT");
                 } else {
-                    System.out.println("Error killing node session. Give up.");
+                    log.error("Error killing node session. Give up.");
                     break;
                 }
             }
@@ -389,7 +392,7 @@ public class HostNodeSession extends Thread {
 
             FtpUtil.ftpWriteStringRaw(mWriter, "PORT " + portArg);
             if (!readAndCheckStatus(false, FtpCodes.NODE_OPSOK, FtpCodes.FTP_PORTOK)) {
-                System.out.println("Enter port mode failed. PORT " + portArg);
+                log.debug("Enter port mode failed. PORT {}", portArg);
                 return false;
             }
             return true;
@@ -404,14 +407,14 @@ public class HostNodeSession extends Thread {
             FtpUtil.ftpWriteStringRaw(mWriter, (receive ? "REVE " : "SEND ") + connectorAddress);
             if (!readStatus(false) || mNodeRespond.mRespondCode != FtpCodes.NODE_OPSOK
                     || mNodeRespond.mStatus.mStatusCode == FtpCodes.NODE_BADBRIDGE) {
-                System.out.println("Open bridge failed");
+                log.error("Open bridge failed");
                 return false;
             }
             if (mNodeRespond.mStatus.mStatusCode == FtpCodes.NODE_BRIDGEOK) {
                 try {
                     mBridgePort = Integer.parseInt(mNodeRespond.mStatus.mStatusMsg);
                 } catch (NumberFormatException ignored) {
-                    System.out.println("Open bridge failed");
+                    log.error("Open bridge failed");
                     return false;
                 }
             } else {

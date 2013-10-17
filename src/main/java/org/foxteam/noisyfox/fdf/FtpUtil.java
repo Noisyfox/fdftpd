@@ -1,5 +1,8 @@
 package org.foxteam.noisyfox.fdf;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -17,6 +20,7 @@ import java.util.regex.Pattern;
  * To change this template use File | Settings | File Templates.
  */
 public class FtpUtil {
+    private static final Logger log = LoggerFactory.getLogger(FtpUtil.class);
     public final static Random generator = new Random();//随机数
     public final static SimpleDateFormat dateFormatMdtm = new SimpleDateFormat("yyyyMMddhhmmss");
 
@@ -30,7 +34,7 @@ public class FtpUtil {
         out.print(s);
         out.flush();
 
-        System.out.println("Result:" + s);
+        log.debug("Result:{}", s);
     }
 
     public static void ftpWriteStringRaw(PrintWriter out, String str) {
@@ -38,7 +42,7 @@ public class FtpUtil {
         out.print(str + "\r\n");
         out.flush();
 
-        System.out.println("Result:" + str);
+        log.debug("Result:{}", str);
     }
 
     public static void ftpWriteNodeString(PrintWriter out, int nodeStatus, Object... ftpMsg) {
@@ -53,7 +57,7 @@ public class FtpUtil {
         out.print(s);
         out.flush();
 
-        System.out.println("Result:" + s);
+        log.debug("Result:{}", s);
     }
 
     public static Path ftpGetRealPath(Path home, Path cur, Path path) {
@@ -129,7 +133,7 @@ public class FtpUtil {
                 });
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             return null;
         }
     }
@@ -155,7 +159,7 @@ public class FtpUtil {
 
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
         return null;
     }
@@ -167,7 +171,7 @@ public class FtpUtil {
         try {
             br = new BufferedReader(new InputStreamReader(new FileInputStream(f)));
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             return null;
         }
         String cfgLine;
@@ -183,13 +187,13 @@ public class FtpUtil {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             return null;
         } finally {
             try {
                 br.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
         }
         String[] array = new String[strings.size()];
@@ -208,7 +212,7 @@ public class FtpUtil {
         try {
             number = Integer.parseInt(v);
         } catch (NumberFormatException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
 
         return number;
@@ -242,12 +246,12 @@ public class FtpUtil {
             String line = reader.readLine();
             connection.setSoTimeout(0);
             if (line != null) {
-                System.out.println(tag + ";Status:" + line);
+                log.debug("{};Status:{}", tag, line);
                 parseStatus(line, status);
                 return true;
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
         return false;
     }
@@ -268,14 +272,14 @@ public class FtpUtil {
                     cmdArg.mCmd = line;
                 }
                 if ("PASS".equals(cmdArg.mCmd)) {
-                    System.out.println(tag + ";Command:PASS <hidden>");
+                    log.debug("{};Command:PASS <hidden>", tag);
                 } else {
-                    System.out.println(tag + ";Command:" + line);
+                    log.debug("{};Command:{}", tag, line);
                 }
                 return true;
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
         return false;
     }
@@ -288,7 +292,7 @@ public class FtpUtil {
             String line = reader.readLine();
             connection.setSoTimeout(0);
             if (line != null) {
-                System.out.println("Node respond;" + line);
+                log.debug("Node respond;{}", line);
                 int i = line.indexOf(' ');
                 if (i != -1) {
                     String code = line.substring(0, i).trim();
@@ -303,7 +307,7 @@ public class FtpUtil {
                 return true;
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
         return false;
     }
@@ -324,7 +328,7 @@ public class FtpUtil {
             try {
                 return new ServerSocket(selectedPort);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
         }
     }

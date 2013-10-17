@@ -4,6 +4,8 @@ import org.foxteam.noisyfox.fdf.FtpCodes;
 import org.foxteam.noisyfox.fdf.FtpUtil;
 import org.foxteam.noisyfox.fdf.RequestStatus;
 import org.foxteam.noisyfox.fdf.Tunables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -19,6 +21,7 @@ import java.util.Queue;
  * To change this template use File | Settings | File Templates.
  */
 public class HostNodeConnector extends Thread {
+    private static final Logger log = LoggerFactory.getLogger(HostNodeConnector.class);
     private final Object mWaitObject = new Object();
     private final Host mHost;
     protected final HostNodeDefinition mHostNodeDefinition;
@@ -63,7 +66,7 @@ public class HostNodeConnector extends Thread {
                 } catch (IOException ignored) {
                 }
             }
-            System.out.println("Connection lost or failed, reconnect in 5 seconds.");
+            log.error("Connection lost or failed, reconnect in 5 seconds.");
             try {
                 Thread.sleep(5000);
             } catch (InterruptedException ignored) {
@@ -80,9 +83,9 @@ public class HostNodeConnector extends Thread {
             tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
             tempWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream())));
         } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println(String.format("Unable to connect to node%d-%s:%d", mHostNodeDefinition.number,
-                    mHostNodeDefinition.adderss, mHostNodeDefinition.port));
+            log.error(e.getMessage(), e);
+            log.error("Unable to connect to node{}-{}:{}", mHostNodeDefinition.number,
+                    mHostNodeDefinition.adderss, mHostNodeDefinition.port);
             if (tempReader != null) {
                 try {
                     tempReader.close();
@@ -103,7 +106,7 @@ public class HostNodeConnector extends Thread {
 
         //verify
         if (!doVerify()) return;
-        System.out.println("Node verify ok.");
+        log.info("Node verify ok.");
 
         //request for dir map
         updateDirectoryMapper();
@@ -150,7 +153,7 @@ public class HostNodeConnector extends Thread {
                 ss = new ServerSocket(selectedPort);
                 break;
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
         }
         //请求连接
@@ -175,7 +178,7 @@ public class HostNodeConnector extends Thread {
                 sessionRequest.mNodeSession = session;
             }
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            log.error(e.getMessage(), e);
             //clean
             if (tempSocket != null) try {
                 tempSocket.close();
@@ -193,12 +196,12 @@ public class HostNodeConnector extends Thread {
     private boolean doVerify() {
         FtpUtil.ftpWriteStringRaw(mOut, "CHAG");
         if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_CHALLENGEOK) {
-            System.out.println("Error require challenge.");
+            log.error("Error require challenge.");
             return false;
         }
         FtpUtil.ftpWriteStringRaw(mOut, "REPO " + mHostNodeDefinition.cert.respond(mNodeStatus.mStatusMsg));
         if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_RESPONDEOK) {
-            System.out.println("Error verify challenge.");
+            log.error("Error verify challenge.");
             return false;
         }
         return true;
@@ -207,7 +210,7 @@ public class HostNodeConnector extends Thread {
     private void updateDirectoryMapper() {
         FtpUtil.ftpWriteStringRaw(mOut, "DMAP");
         if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_DMAP) {
-            System.out.println("Error update directory mapper.");
+            log.error("Error update directory mapper.");
             return;
         }
         HostDirectoryMapper.Editor e = mHostDirectoryMapper.edit(mHostNodeDefinition.number);
@@ -224,12 +227,12 @@ public class HostNodeConnector extends Thread {
         }
         if (!needCommit) {
             e.giveup();
-            System.out.println("Error update directory mapper.");
+            log.error("Error update directory mapper.");
         } else {
             if (e.commit()) {
-                System.out.println("Update directory mapper ok.");
+                log.info("Update directory mapper ok.");
             } else {
-                System.out.println("Error commit directory mapper.");
+                log.error("Error commit directory mapper.");
             }
         }
     }
@@ -247,11 +250,11 @@ public class HostNodeConnector extends Thread {
 
             FtpUtil.ftpWriteStringRaw(mOut, "CONF " + cfg[0] + '=' + cfg[1]);
             if (!readStatus() || mNodeStatus.mStatusCode != FtpCodes.HOST_CONFOK) {
-                System.out.println("Error upload host config.");
+                log.error("Error upload host config.");
                 return;
             }
         }
-        System.out.println("Host config uploaded!");
+        log.info("Host config uploaded!");
     }
 
     public HostNodeSession getNodeSession(HostServant servant) {

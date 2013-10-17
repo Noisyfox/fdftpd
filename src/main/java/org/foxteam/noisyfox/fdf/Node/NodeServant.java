@@ -2,6 +2,8 @@ package org.foxteam.noisyfox.fdf.Node;
 
 import org.foxteam.noisyfox.fdf.FilePermission;
 import org.foxteam.noisyfox.fdf.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -16,6 +18,7 @@ import java.util.Date;
  * To change this template use File | Settings | File Templates.
  */
 public class NodeServant extends Thread {
+    private static final Logger log = LoggerFactory.getLogger(NodeServant.class);
 
     private NodeSession mSession;
 
@@ -56,10 +59,10 @@ public class NodeServant extends Thread {
 
     @Override
     public void run() {
-        System.out.println("Node servant started!");
+        log.info("Node servant started!");
         mSession = new NodeSession();
         servantLoop();
-        System.out.println("Node servant exit!");
+        log.info("Node servant exit!");
     }
 
     //**************************************************************************************************************
@@ -93,24 +96,20 @@ public class NodeServant extends Thread {
 
         if (mSession.userDataTransferReaderAscii != null) try {
             mSession.userDataTransferReaderAscii.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         if (mSession.userDataTransferReaderBinary != null) try {
             mSession.userDataTransferReaderBinary.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         if (mSession.userDataTransferWriterAscii != null) mSession.userDataTransferWriterAscii.close();
         if (mSession.userDataTransferWriterBinary != null) try {
             mSession.userDataTransferWriterBinary.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         if (mSession.userDataTransferSocket != null) try {
             mSession.userDataTransferSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
 
         mSession.userDataTransferSocket = null;
@@ -138,8 +137,7 @@ public class NodeServant extends Thread {
                     mMidwayStatusMsg = new Object[]{' ', "Security: Bad IP connecting."};
                     try {
                         tempSocket.close();
-                    } catch (IOException e1) {
-                        e1.printStackTrace();
+                    } catch (IOException ignored) {
                     }
                     return false;
                 }
@@ -153,7 +151,7 @@ public class NodeServant extends Thread {
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             //clean
             if (tempReaderAscii != null) try {
                 tempReaderAscii.close();
@@ -170,7 +168,6 @@ public class NodeServant extends Thread {
 
             mMidwayStatusCode = FtpCodes.FTP_BADSENDCONN;
             mMidwayStatusMsg = new Object[]{' ', "Failed to establish connection."};
-            //FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Failed to establish connection.");
 
             return false;
         }
@@ -201,7 +198,7 @@ public class NodeServant extends Thread {
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             //clean
             if (tempReaderAscii != null) try {
                 tempReaderAscii.close();
@@ -217,7 +214,6 @@ public class NodeServant extends Thread {
             }
             mMidwayStatusCode = FtpCodes.FTP_BADSENDCONN;
             mMidwayStatusMsg = new Object[]{' ', "Failed to establish connection."};
-            //FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Failed to establish connection.");
 
             return false;
         }
@@ -239,8 +235,7 @@ public class NodeServant extends Thread {
         if (mSession.userPasvSocketServer != null) {
             try {
                 mSession.userPasvSocketServer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException ignored) {
             }
         }
         mSession.userPasvSocketServer = null;
@@ -328,7 +323,7 @@ public class NodeServant extends Thread {
                 try {
                     pos = Long.valueOf(mHostCmdArg.mArg);
                 } catch (NumberFormatException e) {
-                    e.printStackTrace();
+                    log.error(e.getMessage(), e);
                 }
                 mSession.userFileRestartOffset = pos;
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_RESTOK, ' ', "Restart position accepted (" + pos + ").");
@@ -429,13 +424,13 @@ public class NodeServant extends Thread {
         try {
             sockPort = Integer.valueOf(values[4]) << 8 | Integer.valueOf(values[5]);
         } catch (NumberFormatException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
             return;
         }
 
         String sockAddr = String.format("%s.%s.%s.%s", values);
-        System.out.println(sockAddr + ":" + sockPort);
+        log.debug("{}:{}", sockAddr, sockPort);
         /* SECURITY:
         * 1) Reject requests not connecting to the control socket IP
         * 2) Reject connects to privileged ports
@@ -657,11 +652,11 @@ public class NodeServant extends Thread {
             br = new BufferedReader(new InputStreamReader(new FileInputStream(f),
                     mSession.asciiCharset));
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
             return;
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
             return;
         }
@@ -671,8 +666,7 @@ public class NodeServant extends Thread {
             cleanPort();
             try {
                 br.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException ignored) {
             }
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to establish connection.");
             return;
@@ -693,7 +687,7 @@ public class NodeServant extends Thread {
                 transferSuccess = !mSession.userDataTransferWriterAscii.checkError();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             fileReadSuccess = false;
         }
 
@@ -724,10 +718,10 @@ public class NodeServant extends Thread {
             try {
                 bis.skip(mSession.userFileRestartOffset);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
             return;
         }
@@ -737,8 +731,7 @@ public class NodeServant extends Thread {
             cleanPort();
             try {
                 bis.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException ignored) {
             }
             FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_FILEFAIL, ' ', "Failed to establish connection.");
             return;
@@ -753,18 +746,18 @@ public class NodeServant extends Thread {
                 try {
                     mSession.userDataTransferWriterBinary.write(bytes, 0, size);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error(e.getMessage(), e);
                     transferSuccess = false;
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             fileReadSuccess = false;
         }
         try {
             mSession.userDataTransferWriterBinary.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             transferSuccess = false;
         }
 
@@ -820,7 +813,7 @@ public class NodeServant extends Thread {
             try {
                 raf = new RandomAccessFile(f, "rw");
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_UPLOADFAIL, ' ', "Could not create file or open exist file.");
                 return;
             }
@@ -834,7 +827,7 @@ public class NodeServant extends Thread {
                     raf.setLength(0);//清除已有内容
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
 
             if (!ioOpenConnection("")) {
@@ -842,8 +835,7 @@ public class NodeServant extends Thread {
                 cleanPort();
                 try {
                     raf.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (IOException ignored) {
                 }
                 FtpUtil.ftpWriteNodeString(mWriter, FtpCodes.NODE_OPSOK, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
                 return;
@@ -861,10 +853,12 @@ public class NodeServant extends Thread {
                         try {
                             raf.write(bytes);
                         } catch (IOException e) {
+                            log.error(e.getMessage(), e);
                             fileWriteSuccess = false;
                         }
                     }
                 } catch (IOException e) {
+                    log.error(e.getMessage(), e);
                     transferSuccess = false;
                 }
             } else {
@@ -875,10 +869,12 @@ public class NodeServant extends Thread {
                         try {
                             raf.write(bytes, 0, size);
                         } catch (IOException e) {
+                            log.error(e.getMessage(), e);
                             fileWriteSuccess = false;
                         }
                     }
                 } catch (IOException e) {
+                    log.error(e.getMessage(), e);
                     transferSuccess = false;
                 }
             }

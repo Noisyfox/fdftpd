@@ -2,6 +2,8 @@ package org.foxteam.noisyfox.fdf.Host;
 
 import org.foxteam.noisyfox.fdf.FilePermission;
 import org.foxteam.noisyfox.fdf.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -18,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * To change this template use File | Settings | File Templates.
  */
 public class HostServant extends Thread {
+    private static final Logger log = LoggerFactory.getLogger(HostServant.class);
     private static volatile AtomicInteger mNumClients = new AtomicInteger(0);
 
     private FtpBridge.OnBridgeWorkFinishListener mBridgeFinishListener = new FtpBridge.OnBridgeWorkFinishListener() {
@@ -75,24 +78,20 @@ public class HostServant extends Thread {
 
         if (mSession.userDataTransferReaderAscii != null) try {
             mSession.userDataTransferReaderAscii.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         if (mSession.userDataTransferReaderBinary != null) try {
             mSession.userDataTransferReaderBinary.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         if (mSession.userDataTransferWriterAscii != null) mSession.userDataTransferWriterAscii.close();
         if (mSession.userDataTransferWriterBinary != null) try {
             mSession.userDataTransferWriterBinary.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
         if (mSession.userDataTransferSocket != null) try {
             mSession.userDataTransferSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
 
         mSession.userDataTransferSocket = null;
@@ -119,8 +118,7 @@ public class HostServant extends Thread {
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDCONN, ' ', "Security: Bad IP connecting.");
                     try {
                         tempSocket.close();
-                    } catch (IOException e1) {
-                        e1.printStackTrace();
+                    } catch (IOException ignored) {
                     }
                     return false;
                 }
@@ -134,7 +132,7 @@ public class HostServant extends Thread {
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             //clean
             if (tempReaderAscii != null) try {
                 tempReaderAscii.close();
@@ -179,7 +177,7 @@ public class HostServant extends Thread {
             tempWriterAscii = new PrintWriter(new BufferedWriter(new OutputStreamWriter(os, charSet)), true);
             tempWriterBinary = new BufferedOutputStream(os);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             //clean
             if (tempReaderAscii != null) try {
                 tempReaderAscii.close();
@@ -304,7 +302,6 @@ public class HostServant extends Thread {
             try {
                 mSession.userPasvSocketServer.close();
             } catch (IOException e) {
-                e.printStackTrace();
             }
         }
         mSession.userPasvSocketServer = null;
@@ -390,12 +387,12 @@ public class HostServant extends Thread {
             try {
                 sockPort = Integer.valueOf(values[4]) << 8 | Integer.valueOf(values[5]);
             } catch (NumberFormatException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
                 return;
             }
             String sockAddr = String.format("%s.%s.%s.%s", values);
-            System.out.println(sockAddr + ":" + sockPort);
+            log.debug("{}:{}", sockAddr, sockPort);
             /* SECURITY:
             * 1) Reject requests not connecting to the control socket IP
             * 2) Reject connects to privileged ports
@@ -736,7 +733,7 @@ public class HostServant extends Thread {
                 fileName = Path.valueOf(mSession.mFtpCmdArg.mArg.substring(firstSpaceLoc).trim());
                 isSet = true;
             } catch (ParseException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                log.error(e.getMessage(), e);
             }
         }
         if (!isSet) {
@@ -789,11 +786,11 @@ public class HostServant extends Thread {
             br = new BufferedReader(new InputStreamReader(new FileInputStream(f),
                     mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset));
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
             return;
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
             return;
         }
@@ -809,7 +806,6 @@ public class HostServant extends Thread {
             try {
                 br.close();
             } catch (IOException e) {
-                e.printStackTrace();
             }
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to establish connection.");
             return;
@@ -830,7 +826,7 @@ public class HostServant extends Thread {
                 transferSuccess = !mSession.userDataTransferWriterAscii.checkError();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             fileReadSuccess = false;
         }
 
@@ -863,10 +859,10 @@ public class HostServant extends Thread {
             try {
                 bis.skip(offset);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
             }
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to open file.");
             return;
         }
@@ -882,7 +878,6 @@ public class HostServant extends Thread {
             try {
                 bis.close();
             } catch (IOException e) {
-                e.printStackTrace();
             }
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to establish connection.");
             return;
@@ -897,18 +892,18 @@ public class HostServant extends Thread {
                 try {
                     mSession.userDataTransferWriterBinary.write(bytes, 0, size);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error(e.getMessage(), e);
                     transferSuccess = false;
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             fileReadSuccess = false;
         }
         try {
             mSession.userDataTransferWriterBinary.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             transferSuccess = false;
         }
 
@@ -1202,7 +1197,7 @@ public class HostServant extends Thread {
         try {
             raf = new RandomAccessFile(f, "rw");
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_UPLOADFAIL, ' ', "Could not create file or open exist file.");
             return;
         }
@@ -1216,7 +1211,7 @@ public class HostServant extends Thread {
                 raf.setLength(0);//清除已有内容
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
 
         String ioMsg;
@@ -1231,7 +1226,6 @@ public class HostServant extends Thread {
             try {
                 raf.close();
             } catch (IOException e) {
-                e.printStackTrace();
             }
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
             return;
@@ -1565,7 +1559,7 @@ public class HostServant extends Thread {
                 mSession.isUTF8Required = true;
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_OPTSOK, ' ', "Switch to UTF8 mode.");
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADOPTS, ' ', "Switch to UTF8 mode failed.");
             }
         } else {
@@ -1737,7 +1731,7 @@ public class HostServant extends Thread {
             return false;
         }
         if (mSession.userAnon && mTunables.hostAnonEnabled) {
-            System.out.println("Anonmyous login with email " + mSession.mFtpCmdArg.mArg);
+            log.info("Anonmyous login with email {}", mSession.mFtpCmdArg.mArg);
             //check for banned email
             if (mTunables.hostAnonDenyEmailEnabled) {
                 for (String s : mTunables.hostAnonDenyEmail) {
@@ -1826,7 +1820,7 @@ public class HostServant extends Thread {
 
     @Override
     public void run() {
-        System.out.println("Session start!");
+        log.info("Session start!");
         while (true) {
             mNumClients.incrementAndGet();
             //开始监听
@@ -1834,7 +1828,7 @@ public class HostServant extends Thread {
                 mOut = new PrintWriter(new OutputStreamWriter(mIncoming.getOutputStream(), mTunables.hostRemoteCharset), true);
                 mIn = new BufferedReader(new InputStreamReader(mIncoming.getInputStream(), mTunables.hostRemoteCharset));
             } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                log.error(e.getMessage(), e);
                 break;
             }
 
@@ -1855,7 +1849,7 @@ public class HostServant extends Thread {
         }
         doClean();
         mNumClients.decrementAndGet();
-        System.out.println("Session exit!");
+        log.info("Session exit!");
     }
 
     private void postLogin() {
@@ -1955,7 +1949,7 @@ public class HostServant extends Thread {
                 try {
                     pos = Long.valueOf(mSession.mFtpCmdArg.mArg);
                 } catch (NumberFormatException e) {
-                    e.printStackTrace();
+                    log.error(e.getMessage(), e);
                 }
                 mSession.userFileRestartOffset = pos;
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_RESTOK, ' ', "Restart position accepted (" + pos + ").");
@@ -2046,6 +2040,6 @@ public class HostServant extends Thread {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Unknown command.");
             }
         }
-        System.out.println("Oops!");
+        log.info("Oops!");
     }
 }

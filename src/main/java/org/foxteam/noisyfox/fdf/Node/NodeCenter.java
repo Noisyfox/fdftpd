@@ -1,6 +1,8 @@
 package org.foxteam.noisyfox.fdf.Node;
 
 import org.foxteam.noisyfox.fdf.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.Socket;
@@ -14,6 +16,7 @@ import java.util.LinkedList;
  * To change this template use File | Settings | File Templates.
  */
 public class NodeCenter {
+    private static final Logger log = LoggerFactory.getLogger(NodeCenter.class);
     protected final FtpCertification mCert;
     protected final Tunables mTunables;
     protected final Socket mIncoming;
@@ -41,7 +44,7 @@ public class NodeCenter {
             mOut = new PrintWriter(new OutputStreamWriter(mIncoming.getOutputStream(), mTunables.hostRemoteCharset), true);
             mIn = new BufferedReader(new InputStreamReader(mIncoming.getInputStream(), mTunables.hostRemoteCharset));
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            log.error(e.getMessage(), e);
             return;
         }
 
@@ -56,7 +59,7 @@ public class NodeCenter {
         try {
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
     }
 
@@ -69,12 +72,12 @@ public class NodeCenter {
                 if (mCert.verify(challenge, mHostCmdArg.mArg)) {
                     //OK
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_RESPONDEOK, ' ', "Greeting! Host!");
-                    System.out.println("Host verify success!");
+                    log.info("Host verify success!");
                     return true;
                 } else {
                     //Bad
                     FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.HOST_BADRESPONDE, ' ', "Failed to verify host.");
-                    System.out.println("Failed to verify host.");
+                    log.info("Failed to verify host.");
                     return false;
                 }
             } else {
@@ -123,7 +126,7 @@ public class NodeCenter {
             NodeServant servant = new NodeServant(this, tempSocket);
             servant.start();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
     }
 

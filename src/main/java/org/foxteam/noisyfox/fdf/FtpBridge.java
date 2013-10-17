@@ -1,5 +1,8 @@
 package org.foxteam.noisyfox.fdf;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -16,6 +19,7 @@ import java.net.Socket;
  * 始终使用字节流传输数据。
  */
 public class FtpBridge extends Thread {
+    private static final Logger log = LoggerFactory.getLogger(FtpBridge.class);
     private static final int BUFFER_MAX_SIZE = 1024 * 10;
 
     private final Object mWaitObj = new Object();
@@ -58,7 +62,7 @@ public class FtpBridge extends Thread {
 
     @Override
     public void run() {
-        System.out.println("Bridge started!");
+        log.info("Bridge started!");
         //开始监听
         try {
             mSocket = mSocketServer.accept();
@@ -73,7 +77,7 @@ public class FtpBridge extends Thread {
         }
         //检查是否是来自指定节点的连接
         String clientAddr = FtpUtil.getSocketRemoteAddress(mSocket);
-        System.out.println("Bridge get connection from " + clientAddr);
+        log.info("Bridge get connection from {}", clientAddr);
         if (!mNodeAddress.equals(clientAddr)) {
             onFinish();
             return;
@@ -111,12 +115,12 @@ public class FtpBridge extends Thread {
                 mOutputStream.write(buffer, 0, readSize);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
         try {
             mOutputStream.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
         try {
             mSocket.close();
@@ -135,7 +139,7 @@ public class FtpBridge extends Thread {
             isKilled = true;
             mWaitObj.notify();
         }
-        System.out.println("Bridge finished!");
+        log.info("Bridge finished!");
     }
 
     public void kill() {
@@ -157,7 +161,6 @@ public class FtpBridge extends Thread {
                 try {
                     mSocketServer.close();
                 } catch (IOException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                 }
             }
         }
