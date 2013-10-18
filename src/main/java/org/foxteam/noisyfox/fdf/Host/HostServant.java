@@ -560,6 +560,9 @@ public class HostServant extends Thread {
                 HostNodeSession nodeSession = mNodeController.getNodeSession();
                 //通知编码
                 nodeSession.doCharset(mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset);
+
+                //开始传输数据
+                FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DATACONN, ' ', "Here comes the directory listing.");
                 nodeSession.handleList(path, filter, fullDetails);
             } catch (IndexOutOfBoundsException ex) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to list directory.");
@@ -595,6 +598,9 @@ public class HostServant extends Thread {
 
             //通知编码
             pathNodeSession.doCharset(mSession.isUTF8Required ? "UTF-8" : mTunables.hostDefaultTransferCharset);
+
+            //开始传输数据
+            FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_DATACONN, ' ', "Here comes the directory listing.");
             pathNodeSession.handleList(path, filter, fullDetails);
         }
     }
