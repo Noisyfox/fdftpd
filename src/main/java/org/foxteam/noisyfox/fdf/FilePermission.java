@@ -7,7 +7,7 @@ import java.util.LinkedList;
  * User: Noisyfox
  * Date: 13-10-5
  * Time: 下午12:27
- * To change this template use File | Settings | File Templates.
+ * 用户文件权限系统
  */
 public class FilePermission {
     public static final int ACCESS_READ = 0x1;

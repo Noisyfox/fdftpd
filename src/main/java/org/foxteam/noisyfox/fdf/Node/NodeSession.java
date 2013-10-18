@@ -13,7 +13,7 @@ import java.net.Socket;
  * User: Noisyfox
  * Date: 13-9-25
  * Time: 下午7:57
- * To change this template use File | Settings | File Templates.
+ * 节点会话
  */
 public class NodeSession extends RateRestriction {
 
@@ -21,16 +21,11 @@ public class NodeSession extends RateRestriction {
     protected boolean userAnon = false;
 
     protected boolean isAscii = false;
-    //protected boolean isUTF8Required = false;
     protected String asciiCharset = "UTF-8";
 
-    //protected String[] userCmdsAllowed = {}; //用户白名单
-    //protected String[] userCmdsDenied = {}; //用户黑名单
     protected FilePermission permission = new FilePermission();
 
     protected Path userCurrentDir = Path.valueOf("/");
-    //protected String userHomeDir = "C:\\";
-    //protected String userCurrentDir = userHomeDir;
 
     protected String userRemoteAddr = "";
     protected String userPortSocketAddr = "";

@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * User: Noisyfox
  * Date: 13-9-21
  * Time: 下午10:04
- * To change this template use File | Settings | File Templates.
+ * 主机主服务线程
  */
 public class HostServant extends Thread {
     private static final Logger log = LoggerFactory.getLogger(HostServant.class);
@@ -301,7 +301,7 @@ public class HostServant extends Thread {
         if (mSession.userPasvSocketServer != null) {
             try {
                 mSession.userPasvSocketServer.close();
-            } catch (IOException e) {
+            } catch (IOException ignored) {
             }
         }
         mSession.userPasvSocketServer = null;
@@ -883,7 +883,7 @@ public class HostServant extends Thread {
             cleanPort();
             try {
                 bis.close();
-            } catch (IOException e) {
+            } catch (IOException ignored) {
             }
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_FILEFAIL, ' ', "Failed to establish connection.");
             return;
@@ -1231,7 +1231,7 @@ public class HostServant extends Thread {
             cleanPort();
             try {
                 raf.close();
-            } catch (IOException e) {
+            } catch (IOException ignored) {
             }
             FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADSENDNET, ' ', "Failed to establish connection.");
             return;

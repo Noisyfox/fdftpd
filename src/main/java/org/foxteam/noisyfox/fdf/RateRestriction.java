@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf;
  * User: Noisyfox
  * Date: 13-9-24
  * Time: 下午7:19
- * To change this template use File | Settings | File Templates.
+ * 速度限制器
  */
 public class RateRestriction {
 

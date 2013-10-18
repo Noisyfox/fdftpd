@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf;
  * User: Noisyfox
  * Date: 13-10-6
  * Time: 下午10:34
- * To change this template use File | Settings | File Templates.
+ * 服务器交互命令
  */
 public class RequestCmdArg {
     public String mCmd = "";

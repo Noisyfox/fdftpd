@@ -16,7 +16,7 @@ import java.net.Socket;
  * User: Noisyfox
  * Date: 13-9-25
  * Time: 下午7:56
- * To change this template use File | Settings | File Templates.
+ * 主节点服务
  */
 public class Node implements Server {
     private static final Logger log = LoggerFactory.getLogger(Node.class);

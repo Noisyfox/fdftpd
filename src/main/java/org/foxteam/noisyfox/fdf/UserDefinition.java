@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf;
  * User: Noisyfox
  * Date: 13-10-4
  * Time: 下午10:57
- * To change this template use File | Settings | File Templates.
+ * 用户定义
  */
 public class UserDefinition {
     public String name = "";

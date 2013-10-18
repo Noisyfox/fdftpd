@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf;
  * User: Noisyfox
  * Date: 13-10-6
  * Time: 下午10:25
- * To change this template use File | Settings | File Templates.
+ * 对命令的响应
  */
 public class RequestStatus {
     public int mStatusCode;

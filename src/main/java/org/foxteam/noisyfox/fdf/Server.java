@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf;
  * User: Noisyfox
  * Date: 13-10-13
  * Time: 下午1:12
- * To change this template use File | Settings | File Templates.
+ * 服务接口
  */
 public interface Server {
     public void startServer(String args[]);

@@ -13,7 +13,7 @@ import java.util.LinkedList;
  * User: Noisyfox
  * Date: 13-9-25
  * Time: 下午8:28
- * To change this template use File | Settings | File Templates.
+ * 节点主控制器
  */
 public class NodeCenter {
     private static final Logger log = LoggerFactory.getLogger(NodeCenter.class);
@@ -57,7 +57,7 @@ public class NodeCenter {
 
     public void tryDoClean() {
         try {
-
+            mIncoming.close();
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }

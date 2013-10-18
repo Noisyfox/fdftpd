@@ -12,7 +12,7 @@ import java.util.Arrays;
  * User: Noisyfox
  * Date: 13-10-13
  * Time: 下午12:32
- * To change this template use File | Settings | File Templates.
+ * 服务启动器
  */
 public class Bootstrap {
     private static final Logger log = LoggerFactory.getLogger(Bootstrap.class);

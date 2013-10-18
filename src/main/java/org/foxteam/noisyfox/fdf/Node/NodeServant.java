@@ -15,7 +15,7 @@ import java.util.Date;
  * User: Noisyfox
  * Date: 13-9-25
  * Time: 下午9:07
- * To change this template use File | Settings | File Templates.
+ * 节点主服务线程
  */
 public class NodeServant extends Thread {
     private static final Logger log = LoggerFactory.getLogger(NodeServant.class);

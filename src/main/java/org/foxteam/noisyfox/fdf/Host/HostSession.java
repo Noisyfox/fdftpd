@@ -12,7 +12,7 @@ import java.net.Socket;
  * User: Noisyfox
  * Date: 13-9-22
  * Time: 上午12:27
- * To change this template use File | Settings | File Templates.
+ * 用户会话信息
  */
 public class HostSession extends RateRestriction {
     protected RequestCmdArg mFtpCmdArg = new RequestCmdArg();

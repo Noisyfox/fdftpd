@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf;
  * User: Noisyfox
  * Date: 13-9-28
  * Time: 上午12:44
- * To change this template use File | Settings | File Templates.
+ * 任意类型的对
  */
 public final class Pair<T1, T2> {
     private T1 value1;

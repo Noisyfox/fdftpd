@@ -12,14 +12,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.AccessControlException;
-import java.util.Random;
 
 /**
  * Created with IntelliJ IDEA.
  * User: Noisyfox
  * Date: 13-9-21
  * Time: 下午9:41
- * To change this template use File | Settings | File Templates.
+ * 服务器主入口
  */
 public class FtpMain extends Thread implements Server {
     private static final Logger log = LoggerFactory.getLogger(FtpMain.class);
@@ -62,12 +61,13 @@ public class FtpMain extends Thread implements Server {
 
     Server fdServer = null;
     String shutdown = "SHUTDOWN";
-    Random random = null;
 
     @Override
     public void run() {
         if (fdServer == null) {
-
+            IllegalStateException exception = new IllegalStateException("Server not created!");
+            log.error(exception.getMessage(), exception);
+            throw exception;
         } else {
             fdServer.startServer(null);
         }
@@ -134,14 +134,13 @@ public class FtpMain extends Thread implements Server {
             }
 
             // Read a set of characters from the socket
-            StringBuffer command = new StringBuffer();
+            StringBuilder command = new StringBuilder();
             int expected = 1024; // Cut off to avoid DoS attack
             while (expected < shutdown.length()) {
-                if (random == null) random = new Random(System.currentTimeMillis());
-                expected += (random.nextInt() % 1024);
+                expected += (FtpUtil.generator.nextInt() % 1024);
             }
             while (expected > 0) {
-                int ch = -1;
+                int ch;
                 try {
                     ch = stream.read();
                 } catch (IOException e) {

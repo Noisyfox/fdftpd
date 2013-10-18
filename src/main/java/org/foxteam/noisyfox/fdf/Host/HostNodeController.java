@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf.Host;
  * User: Noisyfox
  * Date: 13-10-7
  * Time: 下午9:43
- * To change this template use File | Settings | File Templates.
+ * 节点控制器，负责获取节点的特定服务会话
  */
 public class HostNodeController {
     private final HostSession mHostSession;

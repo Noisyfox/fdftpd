@@ -10,7 +10,7 @@ import java.util.HashMap;
  * User: Noisyfox
  * Date: 13-9-28
  * Time: 上午12:13
- * To change this template use File | Settings | File Templates.
+ * 主机路径映射，负责获取指定目录的实际位置
  */
 public class HostDirectoryMapper {
 

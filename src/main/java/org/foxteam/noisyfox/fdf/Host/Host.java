@@ -17,7 +17,7 @@ import java.util.HashMap;
  * User: Noisyfox
  * Date: 13-9-21
  * Time: 下午9:49
- * To change this template use File | Settings | File Templates.
+ * 主机服务
  */
 public class Host implements Server {
     private static final Logger log = LoggerFactory.getLogger(Host.class);

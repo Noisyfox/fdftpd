@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * User: Noisyfox
  * Date: 13-9-21
  * Time: 下午10:32
- * To change this template use File | Settings | File Templates.
+ * 通用函数
  */
 public class FtpUtil {
     private static final Logger log = LoggerFactory.getLogger(FtpUtil.class);

@@ -5,7 +5,7 @@ package org.foxteam.noisyfox.fdf;
  * User: Noisyfox
  * Date: 13-9-21
  * Time: 下午10:11
- * To change this template use File | Settings | File Templates.
+ * FTP通讯状态代码
  */
 public class FtpCodes {
     public static final int ANYCODE = -1;

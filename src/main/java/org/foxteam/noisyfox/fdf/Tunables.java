@@ -13,7 +13,7 @@ import java.util.Vector;
  * User: Noisyfox
  * Date: 13-9-21
  * Time: 下午9:46
- * To change this template use File | Settings | File Templates.
+ * 服务器设置
  */
 public class Tunables {
     private static final Logger log = LoggerFactory.getLogger(Tunables.class);

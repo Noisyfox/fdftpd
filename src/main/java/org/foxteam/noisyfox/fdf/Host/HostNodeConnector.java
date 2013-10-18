@@ -18,7 +18,7 @@ import java.util.Queue;
  * User: Noisyfox
  * Date: 13-9-28
  * Time: 下午2:17
- * To change this template use File | Settings | File Templates.
+ * 节点连接器，负责维持与节点的控制连接
  */
 public class HostNodeConnector extends Thread {
     private static final Logger log = LoggerFactory.getLogger(HostNodeConnector.class);

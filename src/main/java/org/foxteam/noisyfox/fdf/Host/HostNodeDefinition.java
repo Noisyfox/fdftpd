@@ -7,7 +7,7 @@ import org.foxteam.noisyfox.fdf.FtpCertification;
  * User: Noisyfox
  * Date: 13-9-27
  * Time: 下午12:56
- * To change this template use File | Settings | File Templates.
+ * 节点定义
  */
 public class HostNodeDefinition {
     public int number = 0;

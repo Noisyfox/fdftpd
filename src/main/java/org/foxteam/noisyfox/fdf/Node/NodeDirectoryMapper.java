@@ -13,7 +13,7 @@ import java.util.LinkedList;
  * User: Noisyfox
  * Date: 13-9-28
  * Time: 上午12:19
- * To change this template use File | Settings | File Templates.
+ * 节点路径映射
  */
 public class NodeDirectoryMapper {
     private static final Logger log = LoggerFactory.getLogger(NodeCenter.class);

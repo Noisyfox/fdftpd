@@ -10,7 +10,7 @@ import java.io.IOException;
  * User: Noisyfox
  * Date: 13-9-25
  * Time: 下午10:30
- * To change this template use File | Settings | File Templates.
+ * 节点证书
  */
 public final class FtpCertification {
 

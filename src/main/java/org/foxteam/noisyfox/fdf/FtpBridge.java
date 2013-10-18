@@ -30,7 +30,6 @@ public class FtpBridge extends Thread {
     private volatile boolean isStarted = false;
     private volatile boolean isKilled = false;
     private boolean isReceive = false;
-    private Socket mSocket;
     private BufferedInputStream mInputeStream;
     private BufferedOutputStream mOutputStream;
 
@@ -64,6 +63,7 @@ public class FtpBridge extends Thread {
     public void run() {
         log.info("Bridge started!");
         //开始监听
+        Socket mSocket;
         try {
             mSocket = mSocketServer.accept();
         } catch (IOException e) {
@@ -160,7 +160,7 @@ public class FtpBridge extends Thread {
                 isKilled = true;
                 try {
                     mSocketServer.close();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
                 }
             }
         }

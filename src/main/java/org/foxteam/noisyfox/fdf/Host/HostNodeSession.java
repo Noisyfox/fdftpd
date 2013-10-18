@@ -13,7 +13,7 @@ import java.util.LinkedList;
  * User: Noisyfox
  * Date: 13-9-27
  * Time: 下午12:53
- * To change this template use File | Settings | File Templates.
+ * 用户节点会话，负责直接调用节点功能对用户服务
  */
 public class HostNodeSession extends Thread {
     private static final Logger log = LoggerFactory.getLogger(HostNodeSession.class);
