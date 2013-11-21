@@ -111,7 +111,7 @@ public class HostServant extends Thread {
             tempSocket = mSession.userPasvSocketServer.accept();
             mSession.userPasvSocketServer.close();
             mSession.userPasvSocketServer = null;
-            if (mTunables.hostPasvAddressCheck) {
+            if (!mTunables.hostPasvPromiscuous) {
                 //检查是否是来自当前客户端的连接
                 String clientAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
                 if (!mSession.userRemoteAddr.equals(clientAddr)) {
@@ -229,7 +229,7 @@ public class HostServant extends Thread {
     }
 
     private boolean readCmdArg() {
-        return FtpUtil.readCmdArg(mIncoming, mIn, mSession.mFtpCmdArg, 0, "User:" + mSession.user);
+        return FtpUtil.readCmdArg(mIncoming, mIn, mSession.mFtpCmdArg, mTunables.hostSessionIdleTimeout, "User:" + mSession.user);
     }
 
     private boolean checkLimits() {
@@ -397,7 +397,7 @@ public class HostServant extends Thread {
             * 1) Reject requests not connecting to the control socket IP
             * 2) Reject connects to privileged ports
             */
-            if ((mTunables.hostPortAddressCheck && !sockAddr.equals(mSession.userRemoteAddr))
+            if ((!mTunables.hostPortPromiscuous && !sockAddr.equals(mSession.userRemoteAddr))
                     || sockPort < FtpMain.IPPORT_RESERVED) {
                 FtpUtil.ftpWriteStringCommon(mOut, FtpCodes.FTP_BADCMD, ' ', "Illegal PORT command.");
                 return;

@@ -129,7 +129,7 @@ public class NodeServant extends Thread {
             tempSocket = mSession.userPasvSocketServer.accept();
             mSession.userPasvSocketServer.close();
             mSession.userPasvSocketServer = null;
-            if (mNodeCenter.mTunables.nodePasvAddressCheck) {
+            if (!mNodeCenter.mTunables.nodePasvPromiscuous) {
                 //检查是否是来自当前客户端的连接
                 String clientAddr = FtpUtil.getSocketRemoteAddress(tempSocket);
                 if (!mSession.userRemoteAddr.equals(clientAddr)) {
